@@ -18,3 +18,13 @@ class Requisition(Base):
 
     status = Column(String(50), default="PENDING_HEAD")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class RequisitionAuditLog(Base):
+    __tablename__ = "requisition_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    requisition_id = Column(Integer, ForeignKey("requisitions.id"), nullable=False, index=True)
+    action = Column(String(50), nullable=False)
+    details = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)

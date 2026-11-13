@@ -1,11 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 class RequisitionCreate(BaseModel):
     staff_id: int
     item_id: int
-    quantity_requested: int
+    quantity_requested: int = Field(gt=0)
 
 class RequisitionResponse(BaseModel):
     id: int
