@@ -1,9 +1,10 @@
+
 from fastapi import FastAPI
 from src.app.database import engine, Base
 
 from src.app.users import models as user_models, router as user_router
 from src.app.inventory import models as inventory_models, router as inventory_router
-from src.app.requisitions import models as req_models
+from src.app.requisitions import models as req_models, router as req_router
 from src.app.tenders import models as tender_models
 from src.app.finance import models as finance_models
 
@@ -17,8 +18,9 @@ app = FastAPI(
 
 app.include_router(user_router.router)
 app.include_router(inventory_router.router)
+app.include_router(req_router.router)
+
 
 @app.get("/")
 def read_root():
     return {"status": "MCIA Procurement Engine Online"}
-
