@@ -19,25 +19,25 @@
     <section class="login-panel">
       <img src="assets/img/mcia-logo.png" alt="Mauritius Cane Industry Authority">
       <div class="login-form">
-        <h2>Staff Login</h2>
-        <p class="login-sub">Please sign in with your Staff ID or email address to continue.</p>
+        <h2>Sign In</h2>
+        <p class="login-sub">Please sign in with your email address and password to continue.</p>
 
         <div class="notice" id="notice"></div>
 
         <form id="loginForm" novalidate>
           <div class="login-field">
             <span data-icon="user"></span>
-            <input id="staffId" type="text" placeholder="Staff ID or Email Address" autocomplete="username" required>
+            <input id="email" type="email" placeholder="Email Address" autocomplete="username" required>
           </div>
 
           <div class="login-field">
             <span data-icon="lock"></span>
-            <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+            <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
             <button class="eye" type="button" data-eye="password" aria-label="Show password"><span data-icon="eye"></span></button>
           </div>
 
           <div class="login-row">
-            <label><input type="checkbox" id="remember" checked> Remember Staff ID</label>
+            <label><input type="checkbox" id="remember" checked> Remember email</label>
             <a href="#" id="forgot">Forgot Password?</a>
           </div>
 
@@ -50,53 +50,41 @@
   <script src="assets/js/api.js"></script>
   <script src="staff/staff.js"></script>
   <script>
-    const REMEMBER_KEY = "mcia.rememberedStaffId";
+    const REMEMBER_KEY = "mcia.rememberedEmail";
+    const DASHBOARD_BY_ROLE = {
+      STAFF: "staff/dashboard.html",
+      DEPT_HEAD: "dept-head/dashboard.html",
+      ADMIN: "admin/dashboard.html",
+    };
     const form = document.getElementById("loginForm");
-    const staffIdInput = document.getElementById("staffId");
+    const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
     const rememberBox = document.getElementById("remember");
     const notice = document.getElementById("notice");
 
-    staffIdInput.value = localStorage.getItem(REMEMBER_KEY) || "";
-
-    // Matches "MCIA-0003" style codes, which are derived from the numeric user id.
-    function findUser(users, input) {
-      const value = input.trim().toLowerCase();
-      const code = value.match(/^mcia-0*(\d+)$/);
-      const numeric = value.match(/^\d+$/);
-      return users.find((u) => {
-        if (code) return String(u.id) === code[1];
-        if (numeric) return String(u.id) === value;
-        return (u.email || "").toLowerCase() === value;
-      });
-    }
+    emailInput.value = localStorage.getItem(REMEMBER_KEY) || "";
+    session.clear();
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const input = staffIdInput.value.trim();
-      if (!input) {
-        showNotice(notice, "error", "Please enter your Staff ID or email address.");
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) {
+        showNotice(notice, "error", "Please enter your email address and password.");
         return;
       }
 
-      // The password is not checked yet: the users table has no password column.
       try {
-        const users = await api.get("/users/");
-        const user = findUser(users, input);
-        if (!user) {
-          showNotice(notice, "error", "No staff account matches those details.");
-          return;
-        }
-
+        const result = await api.post("/auth/login", { email, password });
         if (rememberBox.checked) {
-          localStorage.setItem(REMEMBER_KEY, input);
+          localStorage.setItem(REMEMBER_KEY, email);
         } else {
           localStorage.removeItem(REMEMBER_KEY);
         }
-        session.set(user.id);
-        location.href = "staff/dashboard.html";
+        session.set(result.token, result.user);
+        location.href = DASHBOARD_BY_ROLE[result.user.role] || "staff/dashboard.html";
       } catch (error) {
-        showNotice(notice, "error", `Could not reach the server. ${error.message}`);
+        showNotice(notice, "error", error.message);
       }
     });
 

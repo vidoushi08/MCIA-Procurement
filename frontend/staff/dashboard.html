@@ -70,6 +70,10 @@
           </div>
         </div>
 
+        <h2 class="section-title">Latest request progress</h2>
+        <p class="section-sub">Where your most recent request is in the approval and payment flow.</p>
+        <div class="card card-body" id="tracker" style="margin-bottom:36px"></div>
+
         <h2 class="section-title">Recent requests</h2>
         <p class="section-sub">Your latest activity, scoped to your own requests.</p>
         <div class="card table-card">
@@ -120,6 +124,9 @@
             <td><a class="btn btn-sm" href="request-history.html">View</a></td>
           </tr>`).join("");
         document.getElementById("recent").innerHTML = rows || `<tr><td class="empty-cell" colspan="5">No requests yet.</td></tr>`;
+        document.getElementById("tracker").innerHTML = mine[0]
+          ? renderTracker(mine[0].status)
+          : `<span class="item-sub">Submit a request to see its progress here.</span>`;
       } catch (error) {
         document.getElementById("recent").innerHTML = `<tr><td class="empty-cell" colspan="5">Could not load requests: ${escapeHtml(error.message)}</td></tr>`;
       }

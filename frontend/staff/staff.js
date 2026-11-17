@@ -58,9 +58,9 @@ const NAV_ITEMS = [
   { key: "profile", label: "Manage profile", href: "manage-profile.html", icon: "user" },
 ];
 
-function renderShell(activeKey, crumb) {
+function renderShell(activeKey, crumb, items = NAV_ITEMS, portal = "STAFF PORTAL") {
   const app = document.getElementById("app");
-  const nav = NAV_ITEMS.map((item) => `
+  const navHtml = items.map((item) => `
       <a href="${item.href}" class="${item.key === activeKey ? "active" : ""}">
         ${icon(item.icon)}<span>${item.label}</span>
       </a>`).join("");
@@ -69,8 +69,8 @@ function renderShell(activeKey, crumb) {
     "afterbegin",
     `<aside class="sidebar">
       <div class="brand"><img src="../assets/img/mcia-logo.png" alt="MCIA"></div>
-      <div class="sidebar-label">STAFF PORTAL</div>
-      <nav class="nav">${nav}</nav>
+      <div class="sidebar-label">${portal}</div>
+      <nav class="nav">${navHtml}</nav>
       <div class="sidebar-photo">
         <img src="../assets/img/sidebar-field.jpg" alt="">
         <div class="caption">
@@ -100,23 +100,26 @@ function signOut() {
 }
 
 async function loadCurrentStaff() {
-  const id = session.get();
-  if (!id) {
+  if (!session.token()) {
     location.href = "../index.html";
     return null;
   }
-  const users = await api.get("/users/");
-  const me = users.find((u) => String(u.id) === String(id));
-  if (!me) {
+  try {
+    const me = await api.get("/auth/me");
+    session.set(session.token(), me);
+    return me;
+  } catch (error) {
     session.clear();
     location.href = "../index.html";
     return null;
   }
-  return me;
 }
 
 async function loadMyRequests(staffId) {
-  const [requisitions, items] = await Promise.all([api.get("/requisitions/"), api.get("/inventory/")]);
+  const [requisitions, items] = await Promise.all([
+    api.get(`/requisitions/staff/${staffId}/progress`),
+    api.get("/inventory/"),
+  ]);
   const itemById = new Map(items.map((item) => [item.id, item]));
   const mine = requisitions
     .filter((r) => String(r.staff_id) === String(staffId))
@@ -130,8 +133,30 @@ const STATUS_MAP = {
   PENDING_ADMIN: { group: "pending", label: "Pending review" },
   TENDER_OPEN: { group: "approved", label: "Approved" },
   FULFILLED_FROM_STOCK: { group: "fulfilled", label: "Fulfilled" },
+  PAID_AWAITING_DELIVERY: { group: "paid", label: "Paid, awaiting delivery" },
+  COMPLETED: { group: "completed", label: "Completed" },
   DECLINED: { group: "declined", label: "Declined" },
 };
+
+const TRACKER_STEPS = ["Submitted", "Head review", "Admin review", "Tender", "Paid", "Completed"];
+const TRACKER_INDEX = {
+  PENDING_HEAD: 1,
+  PENDING_ADMIN: 2,
+  TENDER_OPEN: 3,
+  PAID_AWAITING_DELIVERY: 4,
+  FULFILLED_FROM_STOCK: 6,
+  COMPLETED: 6,
+};
+
+function renderTracker(status) {
+  if (status === "DECLINED") return `<span class="pill declined">Declined: request closed</span>`;
+  const current = TRACKER_INDEX[status] ?? 0;
+  const steps = TRACKER_STEPS.map((label, i) => {
+    const cls = i < current ? "done" : i === current ? "current" : "";
+    return `<li class="${cls}">${label}</li>`;
+  }).join("");
+  return `<ol class="tracker">${steps}</ol>`;
+}
 
 function statusGroup(status) {
   return (STATUS_MAP[status] || { group: "pending" }).group;

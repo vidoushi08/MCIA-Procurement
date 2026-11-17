@@ -95,19 +95,15 @@
               <div class="card-body" style="padding-top:18px">
                 <div class="input-wrap">
                   <select class="input" id="statusFilter">
-                    <option>All statuses</option>
-                    <option>Pending review</option>
-                    <option>In progress</option>
-                    <option>Resolved</option>
+                    <option value="">All statuses</option>
+                    <option value="PENDING_REVIEW">Pending review</option>
+                    <option value="IN_PROGRESS">In progress</option>
+                    <option value="RESOLVED">Resolved</option>
                   </select>
                   <span class="trail" data-icon="chevron-down"></span>
                 </div>
               </div>
-              <div class="empty-state">
-                <div class="icon-box"><span data-icon="file"></span></div>
-                <h3>No remarks yet</h3>
-                <p>Once you submit a remark, it will appear here with its reference, status and any updates.</p>
-              </div>
+              <div id="remarkList"></div>
             </div>
 
             <div class="card card-body">
@@ -151,7 +147,7 @@
       document.getElementById("fileNames").textContent = files.map((f) => f.name).join(", ");
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const category = document.getElementById("category").value;
       const subject = document.getElementById("subject").value.trim();
@@ -160,8 +156,20 @@
         showNotice(notice, "error", "Please complete the category, subject and description.");
         return;
       }
-      // The remarks endpoint does not exist yet, so nothing is saved.
-      showNotice(notice, "info", "Remarks cannot be saved yet: the remarks service has not been built.");
+      const relatedRef = document.getElementById("relatedRef").value.trim();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        await api.post("/remarks/", { category, subject, description, related_ref: relatedRef || null });
+        form.reset();
+        document.getElementById("fileNames").textContent = "";
+        showNotice(notice, "success", "Your remark has been submitted.");
+        await loadRemarks();
+      } catch (error) {
+        showNotice(notice, "error", error.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
     });
 
     document.getElementById("cancelBtn").addEventListener("click", () => {
@@ -170,9 +178,36 @@
       notice.className = "notice";
     });
 
-    loadCurrentStaff().then((me) => {
-      if (me) renderShell("remarks", "Remarks");
-    }).catch((error) => showNotice(notice, "error", `Could not load your profile: ${error.message}`));
+    const REMARK_PILLS = {
+      PENDING_REVIEW: ["pending", "Pending review"],
+      IN_PROGRESS: ["approved", "In progress"],
+      RESOLVED: ["fulfilled", "Resolved"],
+    };
+
+    async function loadRemarks() {
+      const filter = document.getElementById("statusFilter").value;
+      const remarks = await api.get("/remarks/mine");
+      const shown = filter ? remarks.filter((r) => r.status === filter) : remarks;
+      document.getElementById("remarkCount").textContent = remarks.length;
+      document.getElementById("remarkList").innerHTML = shown.length
+        ? shown.map((r) => {
+            const [cls, label] = REMARK_PILLS[r.status] || ["pending", r.status];
+            return `<div class="remark-item">
+              <div class="remark-top"><span class="ref">REM-${String(r.id).padStart(4, "0")}</span><span class="pill ${cls}">${escapeHtml(label)}</span></div>
+              <strong>${escapeHtml(r.subject)}</strong>
+              <div class="item-sub">${escapeHtml(r.category)}${r.related_ref ? " · " + escapeHtml(r.related_ref) : ""} · ${formatDate(r.created_at)}</div>
+              ${r.admin_response ? `<p class="remark-response"><strong>Response:</strong> ${escapeHtml(r.admin_response)}</p>` : ""}
+            </div>`;
+          }).join("")
+        : `<div class="empty-state"><h3>No remarks yet</h3><p>Once you submit a remark, it will appear here with its reference, status and any updates.</p></div>`;
+    }
+
+    loadCurrentStaff().then(async (me) => {
+      if (!me) return;
+      renderShell("remarks", "Remarks");
+      document.getElementById("statusFilter").addEventListener("change", () => loadRemarks().catch((e) => showNotice(notice, "error", e.message)));
+      await loadRemarks();
+    }).catch((error) => showNotice(notice, "error", `Could not load your remarks: ${error.message}`));
   </script>
 </body>
 </html>
