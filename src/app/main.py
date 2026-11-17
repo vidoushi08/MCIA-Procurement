@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.app.database import engine, Base
 
 from src.app.users import models as user_models, router as user_router
@@ -13,6 +14,13 @@ app = FastAPI(
     title="MCIA Stationery Procurement & Inventory System",
     description="Automated stock deduction, 3-tier signatures, and AI vendor comparison.",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(user_router.router)

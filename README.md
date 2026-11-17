@@ -29,7 +29,7 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com
+   git clone https://github.com/vidoushi08/MCIA-Procurement.git
    cd MCIA-Procurement
    ```
 
@@ -46,15 +46,27 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
 
 4. **Configure environment variables (`config/.env`):**
    ```text
-   DATABASE_URL=mysql+pymysql://root:YOUR_PASSWORD@localhost:3306/mcia_procurement
+   DATABASE_URL=mysql+pymysql://mcia_app:YOUR_APP_PASSWORD@localhost:3306/mcia_procurement
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
+   Use a dedicated application user rather than `root`. Do not commit this file.
 
-5. **Create the MySQL database:**
-   Run `CREATE DATABASE mcia_procurement;` in MySQL Workbench.
+5. **Create the MySQL database and application user:**
+   ```sql
+   CREATE DATABASE mcia_procurement;
+   CREATE USER 'mcia_app'@'localhost' IDENTIFIED BY 'YOUR_APP_PASSWORD';
+   GRANT ALL PRIVILEGES ON mcia_procurement.* TO 'mcia_app'@'localhost';
+   ```
 
 6. **Start the FastAPI server:**
    ```powershell
    .\venv\Scripts\python.exe -m uvicorn src.app.main:app --reload
    ```
-   Access the interactive API documentation at `http://127.0.0`.
+   Access the interactive API documentation at `http://127.0.0.1:8000/docs`.
+
+7. **Serve the frontend (separate terminal):**
+   ```powershell
+   cd frontend
+   python -m http.server 5500
+   ```
+   Open `http://127.0.0.1:5500/index.html`.

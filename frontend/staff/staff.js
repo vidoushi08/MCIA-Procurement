@@ -54,20 +54,16 @@ const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", href: "dashboard.html", icon: "home" },
   { key: "create", label: "Create request", href: "create-request.html", icon: "plus-circle" },
   { key: "history", label: "Request history", href: "request-history.html", icon: "list" },
-  { key: "complaints", label: "Remarks", href: "complaints.html", icon: "message" },
+  { key: "remarks", label: "Remarks", href: "remarks.html", icon: "message" },
   { key: "profile", label: "Manage profile", href: "manage-profile.html", icon: "user" },
 ];
 
 function renderShell(activeKey, crumb) {
   const app = document.getElementById("app");
-  const nav = NAV_ITEMS.map((item) => {
-    // The complaints page is labelled "Complaints" in the designs; every other page uses "Remarks".
-    const label = item.key === "complaints" && activeKey === "complaints" ? "Complaints" : item.label;
-    return `
+  const nav = NAV_ITEMS.map((item) => `
       <a href="${item.href}" class="${item.key === activeKey ? "active" : ""}">
-        ${icon(item.icon)}<span>${label}</span>
-      </a>`;
-  }).join("");
+        ${icon(item.icon)}<span>${item.label}</span>
+      </a>`).join("");
 
   app.insertAdjacentHTML(
     "afterbegin",
