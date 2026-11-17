@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Manage Profile</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1>Manage profile</h1>
+            <p>Keep your personal details, contact information and account settings up to date.</p>
+          </div>
+        </div>
+
+        <div class="card profile-head">
+          <div class="avatar" id="avatar">–</div>
+          <div>
+            <h2 id="profileName">Loading…</h2>
+            <p>Mauritius Cane Industry Authority · Staff portal</p>
+          </div>
+          <span class="pill">Staff account</span>
+        </div>
+
+        <div class="notice" id="notice"></div>
+
+        <form id="profileForm" novalidate>
+          <div class="profile-grid">
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon-box"><span data-icon="user"></span></div>
+                  <div><h2>Personal information</h2><p>Your name and how you appear in the staff portal.</p></div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="field">
+                    <label for="firstName">First name</label>
+                    <input class="input" id="firstName" type="text">
+                  </div>
+                  <div class="field">
+                    <label for="lastName">Last name</label>
+                    <input class="input" id="lastName" type="text" placeholder="Enter last name">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="displayName">Display name</label>
+                  <input class="input" id="displayName" type="text">
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon-box"><span data-icon="mail"></span></div>
+                  <div><h2>Contact information</h2><p>Details used to contact you about your requests.</p></div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="workEmail">Work email</label>
+                  <input class="input" id="workEmail" type="email" placeholder="Enter your work email">
+                </div>
+                <div class="form-row split">
+                  <div class="field">
+                    <label for="phone">Phone number</label>
+                    <input class="input" id="phone" type="tel" placeholder="Enter phone number">
+                  </div>
+                  <div class="field">
+                    <label for="extension">Extension <span class="opt">(optional)</span></label>
+                    <input class="input" id="extension" type="text" placeholder="e.g. 123">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon-box"><span data-icon="box"></span></div>
+                  <div><h2>Staff / work details</h2><p>Your organizational details at MCIA.</p></div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="field">
+                    <label for="staffCode">Staff ID</label>
+                    <div class="input-wrap">
+                      <input class="input locked" id="staffCode" type="text" disabled>
+                      <span class="trail" data-icon="lock"></span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="department">Department / unit</label>
+                    <div class="input-wrap">
+                      <input class="input locked" id="department" type="text" disabled>
+                      <span class="trail" data-icon="lock"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="field">
+                    <label for="jobTitle">Job title</label>
+                    <div class="input-wrap">
+                      <input class="input locked" id="jobTitle" type="text" value="Not provided" disabled>
+                      <span class="trail" data-icon="lock"></span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="office">Office / station</label>
+                    <div class="input-wrap">
+                      <input class="input locked" id="office" type="text" value="Not provided" disabled>
+                      <span class="trail" data-icon="lock"></span>
+                    </div>
+                  </div>
+                </div>
+                <p class="note"><span data-icon="info"></span>These details are managed by your administrator. Contact them to request a correction.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">
+                  <div class="icon-box"><span data-icon="shield"></span></div>
+                  <div><h2>Account &amp; security</h2><p>Change your password to help protect your account.</p></div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="field">
+                  <label for="curPw">Current password</label>
+                  <div class="input-wrap">
+                    <input class="input" id="curPw" type="password" placeholder="Enter current password">
+                    <button class="trail eye" type="button" data-eye="curPw" aria-label="Show password"><span data-icon="eye"></span></button>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="field">
+                    <label for="newPw">New password</label>
+                    <div class="input-wrap">
+                      <input class="input" id="newPw" type="password" placeholder="Enter new password">
+                      <button class="trail eye" type="button" data-eye="newPw" aria-label="Show password"><span data-icon="eye"></span></button>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="confirmPw">Confirm new password</label>
+                    <div class="input-wrap">
+                      <input class="input" id="confirmPw" type="password" placeholder="Re-enter new password">
+                      <button class="trail eye" type="button" data-eye="confirmPw" aria-label="Show password"><span data-icon="eye"></span></button>
+                    </div>
+                  </div>
+                </div>
+                <p class="note" style="line-height:1.5">Leave password fields blank to keep your current password. Use a strong, unique password that you do not use elsewhere.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <div class="left"><span data-icon="shield"></span>Your details are used only for your MCIA staff account.</div>
+            <div class="right">
+              <button class="btn" type="button" id="cancelBtn">Cancel</button>
+              <button class="btn btn-primary" type="submit"><span data-icon="save"></span>Save changes</button>
+            </div>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    let me = null;
+    const notice = document.getElementById("notice");
+
+    function fillForm(user) {
+      const name = nameParts(user.full_name);
+      document.getElementById("avatar").textContent = initials(user.full_name);
+      document.getElementById("profileName").textContent = user.full_name;
+      document.getElementById("firstName").value = name.first;
+      document.getElementById("lastName").value = name.last;
+      document.getElementById("displayName").value = name.first;
+      document.getElementById("workEmail").value = user.email || "";
+      document.getElementById("staffCode").value = staffCode(user.id);
+      document.getElementById("department").value = user.department || "Not provided";
+    }
+
+    document.getElementById("profileForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      // Saving needs a profile update endpoint and password support, which the backend does not have yet.
+      showNotice(notice, "info", "Saving profile changes is not available yet: the server has no profile update endpoint.");
+    });
+
+    document.getElementById("cancelBtn").addEventListener("click", () => {
+      if (me) fillForm(me);
+      notice.className = "notice";
+    });
+
+    (async () => {
+      try {
+        me = await loadCurrentStaff();
+        if (!me) return;
+        renderShell("profile", "Manage profile");
+        fillForm(me);
+      } catch (error) {
+        showNotice(notice, "error", `Could not load your profile: ${error.message}`);
+      }
+    })();
+  </script>
+</body>
+</html>

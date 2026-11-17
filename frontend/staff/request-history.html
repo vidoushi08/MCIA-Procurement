@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Request History</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1>Request history</h1>
+            <p>Review your submitted requests and their current status.</p>
+          </div>
+          <a class="btn btn-primary" href="create-request.html"><span data-icon="plus"></span>Create request</a>
+        </div>
+
+        <div class="stats-row">
+          <div class="card stat-inline"><strong id="cAll">–</strong><span>All requests</span></div>
+          <div class="card stat-inline"><strong class="amber" id="cPending">–</strong><span>Pending review</span></div>
+          <div class="card stat-inline"><strong id="cApproved">–</strong><span>Approved</span></div>
+          <div class="card stat-inline"><strong id="cFulfilled">–</strong><span>Fulfilled</span></div>
+          <div class="card stat-inline"><strong class="red" id="cDeclined">–</strong><span>Declined</span></div>
+        </div>
+
+        <div class="card table-card">
+          <div class="card-head">
+            <div>
+              <h2>My requests</h2>
+              <p id="subtitle">Loading…</p>
+            </div>
+            <div class="note" style="margin:0"><span data-icon="user"></span>Only your own requests</div>
+          </div>
+
+          <div class="filters">
+            <div class="input-wrap">
+              <input class="input search" id="search" type="search" placeholder="Search by item or reference">
+              <span class="trail" data-icon="search"></span>
+            </div>
+            <div class="input-wrap">
+              <select class="input" id="statusFilter">
+                <option value="">Status: All statuses</option>
+                <option value="pending">Pending review</option>
+                <option value="approved">Approved</option>
+                <option value="fulfilled">Fulfilled</option>
+                <option value="declined">Declined</option>
+              </select>
+              <span class="trail" data-icon="chevron-down"></span>
+            </div>
+            <div class="input-wrap">
+              <select class="input" id="dateFilter">
+                <option value="">Date: All time</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+              </select>
+              <span class="trail" data-icon="chevron-down"></span>
+            </div>
+          </div>
+
+          <div class="notice" id="notice" style="margin:16px 24px 0"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Submitted</th>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td class="empty-cell" colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+
+          <div class="card-foot">
+            <span id="count"></span>
+            <span>Submitted date · Newest first</span>
+          </div>
+        </div>
+
+        <p class="footer-note">MAURITIUS CANE INDUSTRY AUTHORITY</p>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    let all = [];
+    const notice = document.getElementById("notice");
+
+    function applyFilters() {
+      const query = document.getElementById("search").value.trim().toLowerCase();
+      const status = document.getElementById("statusFilter").value;
+      const days = Number(document.getElementById("dateFilter").value);
+      const cutoff = days ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
+
+      const visible = all.filter((r) => {
+        const haystack = `${requestRef(r.id)} ${r.item ? r.item.item_name : ""}`.toLowerCase();
+        if (query && !haystack.includes(query)) return false;
+        if (status && statusGroup(r.status) !== status) return false;
+        if (cutoff && new Date(r.created_at).getTime() < cutoff) return false;
+        return true;
+      });
+
+      document.getElementById("rows").innerHTML = visible.length
+        ? visible.map((r) => `
+          <tr>
+            <td class="ref">${requestRef(r.id)}</td>
+            <td>${formatDate(r.created_at)}</td>
+            <td>${itemCell(r.item)}</td>
+            <td>${r.quantity_requested}</td>
+            <td>${statusPill(r.status)}</td>
+            <td><button class="btn btn-sm" type="button" data-detail="${r.id}">View details</button></td>
+          </tr>`).join("")
+        : `<tr><td class="empty-cell" colspan="6">No requests match these filters.</td></tr>`;
+      document.getElementById("count").textContent = `Showing ${visible.length} of ${all.length} requests`;
+    }
+
+    document.getElementById("rows").addEventListener("click", (event) => {
+      if (event.target.closest("[data-detail]")) {
+        showNotice(notice, "info", "Request detail pages are not available yet.");
+      }
+    });
+    ["search", "statusFilter", "dateFilter"].forEach((id) =>
+      document.getElementById(id).addEventListener("input", applyFilters)
+    );
+
+    (async () => {
+      try {
+        const me = await loadCurrentStaff();
+        if (!me) return;
+        renderShell("history", "Request history");
+
+        document.getElementById("subtitle").textContent =
+          `${me.full_name} · ${staffCode(me.id)} · ${me.department}`;
+
+        const { mine } = await loadMyRequests(me.id);
+        all = mine;
+        const count = (group) => mine.filter((r) => statusGroup(r.status) === group).length;
+        document.getElementById("cAll").textContent = mine.length;
+        document.getElementById("cPending").textContent = count("pending");
+        document.getElementById("cApproved").textContent = count("approved");
+        document.getElementById("cFulfilled").textContent = count("fulfilled");
+        document.getElementById("cDeclined").textContent = count("declined");
+        applyFilters();
+      } catch (error) {
+        document.getElementById("rows").innerHTML =
+          `<tr><td class="empty-cell" colspan="6">Could not load requests: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    })();
+  </script>
+</body>
+</html>

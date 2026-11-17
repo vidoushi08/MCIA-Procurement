@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Staff Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1 id="welcome">Welcome back</h1>
+            <p>Track your requests, recent activity and next actions from one place.</p>
+          </div>
+          <div class="today"><span data-icon="calendar"></span><span id="today"></span></div>
+        </div>
+
+        <div class="stats">
+          <div class="card stat">
+            <div class="stat-top">My requests <span data-icon="list"></span></div>
+            <div class="stat-num" id="statAll">–</div>
+            <div class="stat-note">All requests</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-top">Pending review <span class="amber" data-icon="clock"></span></div>
+            <div class="stat-num" id="statPending">–</div>
+            <div class="stat-note">Awaiting a decision</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-top">Approved <span data-icon="check-circle"></span></div>
+            <div class="stat-num" id="statApproved">–</div>
+            <div class="stat-note">Awaiting fulfilment</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-top">Fulfilled <span data-icon="box"></span></div>
+            <div class="stat-num" id="statFulfilled">–</div>
+            <div class="stat-note">Materials received</div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Quick actions</h2>
+        <p class="section-sub">Start a new request or jump to your recent activity.</p>
+        <div class="quick">
+          <div class="card quick-card">
+            <h3>Create request</h3>
+            <p>Start a new material requisition for your team.</p>
+            <div class="icon-box"><span data-icon="plus-circle"></span></div>
+            <a class="btn btn-primary" href="create-request.html"><span data-icon="arrow-right"></span>Start request</a>
+          </div>
+          <div class="card quick-card">
+            <h3>Request history</h3>
+            <p>Review every request you have submitted.</p>
+            <div class="icon-box"><span data-icon="list"></span></div>
+            <a class="btn" href="request-history.html"><span data-icon="arrow-right"></span>View history</a>
+          </div>
+          <div class="card quick-card">
+            <h3>Complaints</h3>
+            <p>Discover the new complaints page and submit a report.</p>
+            <div class="icon-box"><span data-icon="message"></span></div>
+            <a class="btn" href="complaints.html"><span data-icon="arrow-right"></span>View complaints</a>
+          </div>
+          <div class="card quick-card">
+            <h3>Manage profile</h3>
+            <p>Update your details and contact information.</p>
+            <div class="icon-box"><span data-icon="user"></span></div>
+            <a class="btn" href="manage-profile.html"><span data-icon="arrow-right"></span>Edit profile</a>
+          </div>
+        </div>
+
+        <h2 class="section-title">Recent requests</h2>
+        <p class="section-sub">Your latest activity, scoped to your own requests.</p>
+        <div class="card table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Item</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="recent">
+              <tr><td class="empty-cell" colspan="5">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    (async () => {
+      try {
+        const me = await loadCurrentStaff();
+        if (!me) return;
+        renderShell("dashboard", "Staff dashboard");
+
+        document.getElementById("welcome").textContent = `Welcome back, ${nameParts(me.full_name).first}`;
+        document.getElementById("today").textContent = todayLabel();
+
+        const { mine } = await loadMyRequests(me.id);
+        const count = (predicate) => mine.filter(predicate).length;
+        document.getElementById("statAll").textContent = mine.length;
+        document.getElementById("statPending").textContent = count((r) => statusGroup(r.status) === "pending");
+        document.getElementById("statApproved").textContent = count((r) => statusGroup(r.status) === "approved");
+        document.getElementById("statFulfilled").textContent = count((r) => statusGroup(r.status) === "fulfilled");
+
+        const rows = mine.slice(0, 5).map((r) => `
+          <tr>
+            <td class="ref">${requestRef(r.id)}</td>
+            <td>${itemCell(r.item)}</td>
+            <td>${formatDate(r.created_at)}</td>
+            <td>${statusPill(r.status)}</td>
+            <td><a class="btn btn-sm" href="request-history.html">View</a></td>
+          </tr>`).join("");
+        document.getElementById("recent").innerHTML = rows || `<tr><td class="empty-cell" colspan="5">No requests yet.</td></tr>`;
+      } catch (error) {
+        document.getElementById("recent").innerHTML = `<tr><td class="empty-cell" colspan="5">Could not load requests: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    })();
+  </script>
+</body>
+</html>

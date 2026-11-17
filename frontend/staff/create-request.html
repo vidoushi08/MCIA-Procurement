@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Create Request</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1>Create request</h1>
+            <p>Request the materials you need for your work.</p>
+          </div>
+        </div>
+
+        <div class="card single-card">
+          <div class="card-head">
+            <div>
+              <h2>Create a new request</h2>
+              <p>Material requisition · One item per request</p>
+            </div>
+            <div class="icon-box"><span data-icon="plus-circle"></span></div>
+          </div>
+
+          <form id="requestForm" novalidate>
+            <div class="card-body">
+              <div class="notice" id="notice"></div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="staffMember">Staff member</label>
+                  <div class="input-wrap">
+                    <input class="input locked" id="staffMember" type="text" disabled>
+                    <span class="trail" data-icon="lock"></span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="department">Department / section <span class="required">*</span></label>
+                  <div class="input-wrap">
+                    <select class="input" id="department" required></select>
+                    <span class="trail" data-icon="chevron-down"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="requiredFor">Required for *</label>
+                <input class="input" id="requiredFor" type="text" placeholder="e.g. Field survey team · Réduit station">
+              </div>
+
+              <div class="form-row wide-left">
+                <div class="field">
+                  <label for="item">Item description *</label>
+                  <div class="input-wrap">
+                    <select class="input" id="item" required></select>
+                    <span class="trail" data-icon="chevron-down"></span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="quantity">Quantity *</label>
+                  <input class="input" id="quantity" type="number" min="1" step="1" value="1">
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="reason">Reason / specifications *</label>
+                <textarea class="input textarea" id="reason" placeholder="Explain why this item is needed and any specifications."></textarea>
+              </div>
+
+              <p class="hint">* Required fields. Check the item, quantity and specifications before submitting.</p>
+            </div>
+
+            <div class="card-foot">
+              <span class="note" style="margin:0">
+                <span data-icon="user"></span>Submitted under your staff profile
+              </span>
+              <button class="btn btn-primary" type="submit" id="submitBtn"><span data-icon="arrow-right"></span>Submit request</button>
+            </div>
+          </form>
+        </div>
+
+        <p class="footer-note">MAURITIUS CANE INDUSTRY AUTHORITY</p>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    let me = null;
+    let items = [];
+
+    const departmentSelect = document.getElementById("department");
+    const itemSelect = document.getElementById("item");
+    const notice = document.getElementById("notice");
+    const form = document.getElementById("requestForm");
+
+    function fillItems() {
+      const dept = departmentSelect.value;
+      const matching = items.filter((item) => item.department_category === dept);
+      itemSelect.innerHTML = matching.length
+        ? matching.map((item) => `<option value="${item.id}">${escapeHtml(item.item_name)}</option>`).join("")
+        : `<option value="">No items in this department</option>`;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const itemId = itemSelect.value;
+      const quantity = Number(document.getElementById("quantity").value);
+      const requiredFor = document.getElementById("requiredFor").value.trim();
+      const reason = document.getElementById("reason").value.trim();
+
+      if (!itemId || !Number.isInteger(quantity) || quantity < 1 || !requiredFor || !reason) {
+        showNotice(notice, "error", "Please complete all required fields. Quantity must be a whole number of at least 1.");
+        return;
+      }
+
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      try {
+        // Required for and reason are validated but not sent: the requisitions table has no columns for them yet.
+        const created = await api.post("/requisitions/", {
+          staff_id: me.id,
+          item_id: Number(itemId),
+          quantity_requested: quantity,
+        });
+        showNotice(notice, "success", `Request ${requestRef(created.id)} submitted.`);
+        document.getElementById("quantity").value = 1;
+        document.getElementById("requiredFor").value = "";
+        document.getElementById("reason").value = "";
+      } catch (error) {
+        showNotice(notice, "error", error.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    (async () => {
+      try {
+        me = await loadCurrentStaff();
+        if (!me) return;
+        renderShell("create", "Create request");
+
+        document.getElementById("staffMember").value = `${me.full_name} · ${staffCode(me.id)}`;
+        items = await api.get("/inventory/");
+        const departments = [...new Set([me.department, ...items.map((i) => i.department_category)])].filter(Boolean);
+        departmentSelect.innerHTML = departments
+          .map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`)
+          .join("");
+        departmentSelect.value = me.department;
+        departmentSelect.addEventListener("change", fillItems);
+        fillItems();
+      } catch (error) {
+        showNotice(notice, "error", `Could not load the form: ${error.message}`);
+      }
+    })();
+  </script>
+</body>
+</html>

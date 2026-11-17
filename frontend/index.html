@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Staff Login</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <div class="login">
+    <section class="login-hero">
+      <div class="login-hero-text">
+        <h1>Growing a<br>Sustainable Future</h1>
+        <p>Supporting Mauritius’ sugarcane industry with innovation, people and progress.</p>
+      </div>
+      <img src="assets/img/login-hero.jpg" alt="">
+    </section>
+
+    <section class="login-panel">
+      <img src="assets/img/mcia-logo.png" alt="Mauritius Cane Industry Authority">
+      <div class="login-form">
+        <h2>Staff Login</h2>
+        <p class="login-sub">Please sign in with your Staff ID or email address to continue.</p>
+
+        <div class="notice" id="notice"></div>
+
+        <form id="loginForm" novalidate>
+          <div class="login-field">
+            <span data-icon="user"></span>
+            <input id="staffId" type="text" placeholder="Staff ID or Email Address" autocomplete="username" required>
+          </div>
+
+          <div class="login-field">
+            <span data-icon="lock"></span>
+            <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+            <button class="eye" type="button" data-eye="password" aria-label="Show password"><span data-icon="eye"></span></button>
+          </div>
+
+          <div class="login-row">
+            <label><input type="checkbox" id="remember" checked> Remember Staff ID</label>
+            <a href="#" id="forgot">Forgot Password?</a>
+          </div>
+
+          <button class="login-btn" type="submit">Sign In <span data-icon="arrow-right"></span></button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="staff/staff.js"></script>
+  <script>
+    const REMEMBER_KEY = "mcia.rememberedStaffId";
+    const form = document.getElementById("loginForm");
+    const staffIdInput = document.getElementById("staffId");
+    const passwordInput = document.getElementById("password");
+    const rememberBox = document.getElementById("remember");
+    const notice = document.getElementById("notice");
+
+    staffIdInput.value = localStorage.getItem(REMEMBER_KEY) || "";
+
+    // Matches "MCIA-0003" style codes, which are derived from the numeric user id.
+    function findUser(users, input) {
+      const value = input.trim().toLowerCase();
+      const code = value.match(/^mcia-0*(\d+)$/);
+      const numeric = value.match(/^\d+$/);
+      return users.find((u) => {
+        if (code) return String(u.id) === code[1];
+        if (numeric) return String(u.id) === value;
+        return (u.email || "").toLowerCase() === value;
+      });
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const input = staffIdInput.value.trim();
+      if (!input) {
+        showNotice(notice, "error", "Please enter your Staff ID or email address.");
+        return;
+      }
+
+      // The password is not checked yet: the users table has no password column.
+      try {
+        const users = await api.get("/users/");
+        const user = findUser(users, input);
+        if (!user) {
+          showNotice(notice, "error", "No staff account matches those details.");
+          return;
+        }
+
+        if (rememberBox.checked) {
+          localStorage.setItem(REMEMBER_KEY, input);
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+        session.set(user.id);
+        location.href = "staff/dashboard.html";
+      } catch (error) {
+        showNotice(notice, "error", `Could not reach the server. ${error.message}`);
+      }
+    });
+
+    document.getElementById("forgot").addEventListener("click", (event) => {
+      event.preventDefault();
+      showNotice(notice, "info", "Password reset is not available yet. Please contact your administrator.");
+    });
+  </script>
+</body>
+</html>

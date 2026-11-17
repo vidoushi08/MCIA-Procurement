@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Complaints</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1>Complaints</h1>
+            <p>Raise a concern about your procurement experience and track its progress here.</p>
+          </div>
+        </div>
+
+        <div class="complaint-grid">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Submit a complaint</h2>
+                <p>Tell us what happened so we can look into it.</p>
+              </div>
+              <span class="hint">* Required fields</span>
+            </div>
+
+            <form id="complaintForm" novalidate>
+              <div class="card-body">
+                <div class="notice" id="notice"></div>
+
+                <div class="form-row split">
+                  <div class="field">
+                    <label for="category">Category *</label>
+                    <div class="input-wrap">
+                      <select class="input" id="category" required>
+                        <option value="">Select a category</option>
+                        <option>Delivery delay</option>
+                        <option>Wrong or damaged item</option>
+                        <option>Request decision</option>
+                        <option>Other</option>
+                      </select>
+                      <span class="trail" data-icon="chevron-down"></span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="relatedRef">Related request reference <span class="opt">(optional)</span></label>
+                    <input class="input" id="relatedRef" type="text" placeholder="e.g. REQ-1024">
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="subject">Subject *</label>
+                  <input class="input" id="subject" type="text" placeholder="Briefly summarise your concern">
+                </div>
+
+                <div class="field">
+                  <label for="description">Description *</label>
+                  <textarea class="input textarea" id="description" style="min-height:190px" placeholder="Describe the issue, including any relevant dates, request details and the outcome you are looking for."></textarea>
+                  <span class="hint">Include enough detail to help us understand and review your concern.</span>
+                </div>
+
+                <div class="field">
+                  <span class="label">Attachments <span class="opt">(optional)</span></span>
+                  <div class="dropzone">
+                    <div class="txt">
+                      <span data-icon="file"></span>
+                      <div>Choose files or drag and drop here<small>PDF, JPG or PNG · up to 10 MB per file</small></div>
+                    </div>
+                    <label class="btn btn-sm" for="attachments">Choose files</label>
+                    <input id="attachments" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple hidden>
+                  </div>
+                  <div class="file-names" id="fileNames"></div>
+                </div>
+              </div>
+
+              <div class="card-foot">
+                <span>Please check your details before submitting.</span>
+                <div style="display:flex;gap:12px">
+                  <button class="btn" type="button" id="cancelBtn">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Submit complaint</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="complaint-side">
+            <div class="card">
+              <div class="card-head">
+                <h2>Complaint history</h2>
+                <span class="badge" id="complaintCount">0</span>
+              </div>
+              <div class="card-body" style="padding-top:18px">
+                <div class="input-wrap">
+                  <select class="input" id="statusFilter">
+                    <option>All statuses</option>
+                    <option>Pending review</option>
+                    <option>In progress</option>
+                    <option>Resolved</option>
+                  </select>
+                  <span class="trail" data-icon="chevron-down"></span>
+                </div>
+              </div>
+              <div class="empty-state">
+                <div class="icon-box"><span data-icon="file"></span></div>
+                <h3>No complaints yet</h3>
+                <p>Once you submit a complaint, it will appear here with its reference, status and any updates.</p>
+              </div>
+            </div>
+
+            <div class="card card-body">
+              <h2 class="section-title" style="font-size:17px;margin-bottom:18px">What happens next?</h2>
+              <div class="step pending">
+                <div class="icon-box"><span data-icon="clock"></span></div>
+                <div><strong>Pending review</strong><p>Your complaint has been submitted and is awaiting review.</p></div>
+              </div>
+              <div class="step progress">
+                <div class="icon-box"><span data-icon="search"></span></div>
+                <div><strong>In progress</strong><p>Your concern is being looked into by the relevant team.</p></div>
+              </div>
+              <div class="step resolved">
+                <div class="icon-box"><span data-icon="check-circle"></span></div>
+                <div><strong>Resolved</strong><p>A response or outcome is available in your complaint history.</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    const MAX_FILE_BYTES = 10 * 1024 * 1024;
+    const notice = document.getElementById("notice");
+    const form = document.getElementById("complaintForm");
+    const attachments = document.getElementById("attachments");
+
+    attachments.addEventListener("change", () => {
+      const files = [...attachments.files];
+      const tooBig = files.find((f) => f.size > MAX_FILE_BYTES);
+      if (tooBig) {
+        attachments.value = "";
+        document.getElementById("fileNames").textContent = "";
+        showNotice(notice, "error", `${tooBig.name} is larger than 10 MB.`);
+        return;
+      }
+      document.getElementById("fileNames").textContent = files.map((f) => f.name).join(", ");
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const category = document.getElementById("category").value;
+      const subject = document.getElementById("subject").value.trim();
+      const description = document.getElementById("description").value.trim();
+      if (!category || !subject || !description) {
+        showNotice(notice, "error", "Please complete the category, subject and description.");
+        return;
+      }
+      // The complaints endpoint does not exist yet, so nothing is saved.
+      showNotice(notice, "info", "Complaints cannot be saved yet: the complaints service has not been built.");
+    });
+
+    document.getElementById("cancelBtn").addEventListener("click", () => {
+      form.reset();
+      document.getElementById("fileNames").textContent = "";
+      notice.className = "notice";
+    });
+
+    loadCurrentStaff().then((me) => {
+      if (me) renderShell("complaints", "Complaints");
+    }).catch((error) => showNotice(notice, "error", `Could not load your profile: ${error.message}`));
+  </script>
+</body>
+</html>
