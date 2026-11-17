@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCIA Log quotation</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="content">
+      <main class="main">
+        <div class="page-head">
+          <div>
+            <h1>Log a supplier quotation</h1>
+            <p>Record a quotation received for an open tender. The administrator reviews it and runs the compliance check.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h2>Quotation details</h2>
+              <p>Enter the requisition ID shown on the tender and the supplier's quoted details.</p>
+            </div>
+            <span class="hint">* Required fields</span>
+          </div>
+
+          <form id="quoteForm" novalidate>
+            <div class="card-body">
+              <div class="notice" id="notice"></div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="reqId">Requisition ID *</label>
+                  <input class="input" id="reqId" type="number" min="1" required>
+                </div>
+                <div class="field">
+                  <label for="supplierName">Supplier name *</label>
+                  <input class="input" id="supplierName" type="text" required>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="supplierEmail">Supplier email *</label>
+                  <input class="input" id="supplierEmail" type="email" required>
+                </div>
+                <div class="field">
+                  <label for="supplierPhone">Supplier phone *</label>
+                  <input class="input" id="supplierPhone" type="text" required>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="itemDesc">Quoted item description *</label>
+                <input class="input" id="itemDesc" type="text" required>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="totalPrice">Total price (Rs) *</label>
+                  <input class="input" id="totalPrice" type="number" min="0" step="0.01" required>
+                </div>
+                <div class="field">
+                  <label for="deliveryDate">Expected delivery *</label>
+                  <input class="input" id="deliveryDate" type="datetime-local" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-foot">
+              <span>Please check the figures against the supplier's quotation.</span>
+              <div style="display:flex;gap:12px">
+                <button class="btn" type="button" id="resetBtn">Clear</button>
+                <button class="btn btn-primary" type="submit">Save quotation</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="staff.js"></script>
+  <script>
+    const notice = document.getElementById("notice");
+    const form = document.getElementById("quoteForm");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        await api.post("/tenders/quotations", {
+          requisition_id: Number(document.getElementById("reqId").value),
+          supplier_name: document.getElementById("supplierName").value.trim(),
+          supplier_email: document.getElementById("supplierEmail").value.trim(),
+          supplier_phone: document.getElementById("supplierPhone").value.trim(),
+          quoted_item_description: document.getElementById("itemDesc").value.trim(),
+          total_price: Number(document.getElementById("totalPrice").value),
+          expected_delivery_date: document.getElementById("deliveryDate").value,
+        });
+        form.reset();
+        showNotice(notice, "success", "Quotation saved. The administrator will review it.");
+      } catch (error) {
+        showNotice(notice, "error", error.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      form.reset();
+      notice.className = "notice";
+    });
+
+    loadCurrentStaff().then((me) => {
+      if (!me) return;
+      renderShell("quotes", "Log quotation");
+    });
+  </script>
+</body>
+</html>

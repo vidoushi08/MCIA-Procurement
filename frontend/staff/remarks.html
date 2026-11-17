@@ -160,13 +160,20 @@
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
       try {
-        await api.post("/remarks/", { category, subject, description, related_ref: relatedRef || null });
+        const created = await api.post("/remarks/", { category, subject, description, related_ref: relatedRef || null });
+        const files = [...attachments.files];
+        if (files.length) {
+          const formData = new FormData();
+          files.forEach((f) => formData.append("files", f));
+          await api.upload(`/remarks/${created.id}/attachments`, formData);
+        }
         form.reset();
         document.getElementById("fileNames").textContent = "";
         showNotice(notice, "success", "Your remark has been submitted.");
         await loadRemarks();
       } catch (error) {
         showNotice(notice, "error", error.message);
+        await loadRemarks().catch(() => {});
       } finally {
         submitBtn.disabled = false;
       }
@@ -197,10 +204,25 @@
               <strong>${escapeHtml(r.subject)}</strong>
               <div class="item-sub">${escapeHtml(r.category)}${r.related_ref ? " · " + escapeHtml(r.related_ref) : ""} · ${formatDate(r.created_at)}</div>
               ${r.admin_response ? `<p class="remark-response"><strong>Response:</strong> ${escapeHtml(r.admin_response)}</p>` : ""}
+              ${r.attachments && r.attachments.length ? `<div class="remark-files">${r.attachments.map((a) => `<button type="button" class="btn btn-sm" data-att="${a.id}" data-name="${escapeHtml(a.filename)}"><span data-icon="file"></span>${escapeHtml(a.filename)}</button>`).join("")}</div>` : ""}
             </div>`;
           }).join("")
         : `<div class="empty-state"><h3>No remarks yet</h3><p>Once you submit a remark, it will appear here with its reference, status and any updates.</p></div>`;
+      hydrateIcons(document.getElementById("remarkList"));
     }
+
+    document.getElementById("remarkList").addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-att]");
+      if (!btn) return;
+      try {
+        const blob = await api.download(`/remarks/attachments/${btn.dataset.att}`);
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (error) {
+        showNotice(notice, "error", error.message);
+      }
+    });
 
     loadCurrentStaff().then(async (me) => {
       if (!me) return;

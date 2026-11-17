@@ -55,6 +55,7 @@ const NAV_ITEMS = [
   { key: "create", label: "Create request", href: "create-request.html", icon: "plus-circle" },
   { key: "history", label: "Request history", href: "request-history.html", icon: "list" },
   { key: "remarks", label: "Remarks", href: "remarks.html", icon: "message" },
+  { key: "quotes", label: "Log quotation", href: "quotations.html", icon: "file" },
   { key: "profile", label: "Manage profile", href: "manage-profile.html", icon: "user" },
 ];
 

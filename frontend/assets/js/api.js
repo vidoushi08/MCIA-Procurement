@@ -2,7 +2,8 @@ const API_BASE = "http://127.0.0.1:8000";
 
 async function apiRequest(path, options = {}) {
   const token = session.token();
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const headers = { ...(options.headers || {}) };
+  if (typeof options.body === "string") headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -38,6 +39,13 @@ const api = {
   get: (path) => apiRequest(path),
   post: (path, data) => apiRequest(path, { method: "POST", body: JSON.stringify(data) }),
   put: (path, data) => apiRequest(path, { method: "PUT", body: data === undefined ? undefined : JSON.stringify(data) }),
+  upload: (path, formData) => apiRequest(path, { method: "POST", body: formData }),
+  async download(path) {
+    const token = session.token();
+    const response = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!response.ok) throw new Error(`Download failed (${response.status})`);
+    return response.blob();
+  },
 };
 
 const session = {

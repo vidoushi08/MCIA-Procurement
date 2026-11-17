@@ -106,7 +106,3 @@ function wireActions(container, handlers, reload) {
     });
   });
 }
-
-function shortDate(iso) {
-  return iso ? formatDate(iso) : "";
-}
