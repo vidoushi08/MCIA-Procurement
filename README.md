@@ -48,8 +48,19 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
    ```text
    DATABASE_URL=mysql+pymysql://mcia_app:YOUR_APP_PASSWORD@localhost:3306/mcia_procurement
    GEMINI_API_KEY=your_gemini_api_key_here
+   APP_SECRET_KEY=a_long_random_string
+   SMTP_HOST=smtp.example.com
+   SMTP_FROM=procurement@example.com
    ```
-   Use a dedicated application user rather than `root`. Do not commit this file.
+   Use a dedicated application user rather than `root`. Do not commit this file. See `config/.env.example` for every option, including `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SLA_CHECK_ENABLED` and `SLA_CHECK_INTERVAL_MINUTES`.
+
+   | Variable | Purpose |
+   | --- | --- |
+   | `DATABASE_URL` | MySQL connection string (required). |
+   | `APP_SECRET_KEY` | Signs login tokens. Set it, or tokens become invalid on every server restart. |
+   | `GEMINI_API_KEY` | Enables Gemini quotation checks. A local fallback check runs without it. |
+   | `SMTP_HOST`, `SMTP_FROM` (plus optional `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`) | Sends email notifications. Without them, notifications are logged only. |
+   | `SLA_CHECK_ENABLED`, `SLA_CHECK_INTERVAL_MINUTES` | Background SLA reminder loop (default on, every 60 minutes). |
 
 5. **Create the MySQL database and application user:**
    ```sql
@@ -69,4 +80,26 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
    cd frontend
    python -m http.server 5500
    ```
-   Open `http://127.0.0.1:5500/index.html`.
+   Open `http://127.0.0.1:5500/index.html` and sign in. Each role lands on its own portal: `staff/`, `dept-head/` or `admin/`.
+
+8. **Set a user's password** (run once per user, passing their email):
+   ```powershell
+   .\venv\Scripts\python.exe scripts\set_password.py someone@example.com
+   ```
+
+---
+
+## Running the Tests
+
+The suite uses an in-memory SQLite database, so it needs no MySQL server or Gemini key:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest -q -p no:warnings
+```
+
+---
+
+## Documentation
+
+* [User manual](docs/USER_MANUAL.md): step-by-step guide for staff, department heads and administrators.
+* [Architecture](docs/architecture.md): backend modules, data model and workflow rules.

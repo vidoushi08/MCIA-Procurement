@@ -13,4 +13,5 @@ class PaymentAndDelivery(Base):
 
     pre_delivery_reminder_sent = Column(Boolean, default=False)
     overdue_alert_sent = Column(Boolean, default=False)
+    phone_followup_required = Column(Boolean, default=False)
     is_delivered = Column(Boolean, default=False)

@@ -15,4 +15,5 @@ class SupplierQuotation(Base):
     expected_delivery_date = Column(DateTime, nullable=False)
 
     ai_flag_notes = Column(String(255), nullable=True)
+    is_compliant = Column(Boolean, nullable=True)
     is_approved_lowest = Column(Boolean, default=False)
