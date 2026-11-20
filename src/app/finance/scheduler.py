@@ -32,30 +32,32 @@ def run_sla_delivery_checks(db: Session):
         # 1. Pre-Delivery Reminder (within 24 hours of due date)
         if datetime.timedelta(seconds=0) < time_remaining <= datetime.timedelta(hours=24):
             if not order.pre_delivery_reminder_sent:
-                order.pre_delivery_reminder_sent = True
-                notifications.send_email(
+                email_sent = notifications.send_email(
                     quote.supplier_email,
                     f"Delivery reminder for order #{order.id}",
                     f"Please confirm delivery for order #{order.id}, due {quote.expected_delivery_date:%Y-%m-%d}.",
                 )
                 alerts_triggered.append(
-                    f"PRE-DELIVERY REMINDER: Order #{order.id} from {quote.supplier_name} is due within 24 hours."
+                    f"PRE-DELIVERY REMINDER: {'Email sent' if email_sent else 'Email not sent; check SMTP'} "
+                    f"for order #{order.id} from {quote.supplier_name}, due within 24 hours."
                 )
+                order.pre_delivery_reminder_sent = email_sent
 
         # 2. Overdue Alert (due date has passed)
         elif time_remaining <= datetime.timedelta(seconds=0):
             if not order.overdue_alert_sent:
-                order.overdue_alert_sent = True
                 order.phone_followup_required = True
-                notifications.send_email(
+                email_sent = notifications.send_email(
                     quote.supplier_email,
                     f"Overdue delivery for order #{order.id}",
                     f"Order #{order.id} was due {quote.expected_delivery_date:%Y-%m-%d} and is not yet delivered.",
                 )
                 alerts_triggered.append(
-                    f"OVERDUE SLA ALERT: Email dispatched to {quote.supplier_email}. "
+                    f"OVERDUE SLA ALERT: "
+                    f"{'Email sent' if email_sent else 'Email not sent; check SMTP'} to {quote.supplier_email}. "
                     f"Flagged for phone follow-up at {quote.supplier_phone} ({quote.supplier_name})."
                 )
+                order.overdue_alert_sent = email_sent
 
     db.commit()
     return {"checked_orders": len(active_orders), "alerts_triggered": alerts_triggered}

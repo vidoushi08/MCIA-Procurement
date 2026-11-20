@@ -21,7 +21,7 @@
           <div class="card-head">
             <div>
               <h2>Create a new request</h2>
-              <p>Material requisition · One item per request</p>
+              <p>Material requisition · Request multiple items together</p>
             </div>
             <div class="icon-box"><span data-icon="plus-circle"></span></div>
           </div>
@@ -52,18 +52,10 @@
                 <input class="input" id="requiredFor" type="text" placeholder="e.g. Field survey team · Réduit station">
               </div>
 
-              <div class="form-row wide-left">
-                <div class="field">
-                  <label for="item">Item description *</label>
-                  <div class="input-wrap">
-                    <select class="input" id="item" required></select>
-                    <span class="trail" data-icon="chevron-down"></span>
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="quantity">Quantity *</label>
-                  <input class="input" id="quantity" type="number" min="1" step="1" value="1">
-                </div>
+              <div class="field">
+                <label>Requested items *</label>
+                <div id="requestItems"></div>
+                <button class="btn btn-sm" type="button" id="addItemBtn">Add another item</button>
               </div>
 
               <div class="field">
@@ -71,7 +63,7 @@
                 <textarea class="input textarea" id="reason" placeholder="Explain why this item is needed and any specifications."></textarea>
               </div>
 
-              <p class="hint">* Required fields. Check the item, quantity and specifications before submitting.</p>
+              <p class="hint">* Required fields. Each item may appear once; add all requested items and quantities before submitting.</p>
             </div>
 
             <div class="card-foot">
@@ -95,27 +87,63 @@
     let items = [];
 
     const departmentSelect = document.getElementById("department");
-    const itemSelect = document.getElementById("item");
+    const requestItems = document.getElementById("requestItems");
     const notice = document.getElementById("notice");
     const form = document.getElementById("requestForm");
 
-    function fillItems() {
+    function itemOptions(selectedId = "") {
       const dept = departmentSelect.value;
       const matching = items.filter((item) => item.department_category === dept);
-      itemSelect.innerHTML = matching.length
-        ? matching.map((item) => `<option value="${item.id}">${escapeHtml(item.item_name)}</option>`).join("")
-        : `<option value="">No items in this department</option>`;
+      return `<option value="">Select an item</option>${matching.map((item) =>
+        `<option value="${item.id}" ${String(item.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(item.item_name)}</option>`
+      ).join("")}`;
+    }
+
+    function addItemRow() {
+      const row = document.createElement("div");
+      row.className = "form-row wide-left request-item-row";
+      row.innerHTML = `
+        <div class="field">
+          <label>Item description *</label>
+          <div class="input-wrap">
+            <select class="input request-item-select" required>${itemOptions()}</select>
+            <span class="trail" data-icon="chevron-down"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Quantity *</label>
+          <div style="display:flex;gap:8px">
+            <input class="input request-item-quantity" type="number" min="1" step="1" value="1" required>
+            <button class="btn btn-sm remove-item-btn" type="button" aria-label="Remove item">Remove</button>
+          </div>
+        </div>`;
+      row.querySelector(".remove-item-btn").addEventListener("click", () => {
+        if (requestItems.querySelectorAll(".request-item-row").length > 1) row.remove();
+      });
+      requestItems.appendChild(row);
+      hydrateIcons(row);
+    }
+
+    function fillItems() {
+      requestItems.querySelectorAll(".request-item-select").forEach((select) => {
+        const selected = select.value;
+        select.innerHTML = itemOptions(selected);
+      });
     }
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const itemId = itemSelect.value;
-      const quantity = Number(document.getElementById("quantity").value);
+      const requestedItems = [...requestItems.querySelectorAll(".request-item-row")].map((row) => ({
+        item_id: Number(row.querySelector(".request-item-select").value),
+        quantity_requested: Number(row.querySelector(".request-item-quantity").value),
+      }));
       const requiredFor = document.getElementById("requiredFor").value.trim();
       const reason = document.getElementById("reason").value.trim();
 
-      if (!itemId || !Number.isInteger(quantity) || quantity < 1 || !requiredFor || !reason) {
-        showNotice(notice, "error", "Please complete all required fields. Quantity must be a whole number of at least 1.");
+      if (!form.reportValidity() || requestedItems.some((line) =>
+        !line.item_id || !Number.isInteger(line.quantity_requested) || line.quantity_requested < 1
+      ) || new Set(requestedItems.map((line) => line.item_id)).size !== requestedItems.length || !requiredFor || !reason) {
+        showNotice(notice, "error", "Please complete all required fields, use a unique item in each row, and enter whole quantities of at least 1.");
         return;
       }
 
@@ -125,11 +153,11 @@
         // Required for and reason are validated but not sent: the requisitions table has no columns for them yet.
         const created = await api.post("/requisitions/", {
           staff_id: me.id,
-          item_id: Number(itemId),
-          quantity_requested: quantity,
+          items: requestedItems,
         });
         showNotice(notice, "success", `Request ${requestRef(created.id)} submitted.`);
-        document.getElementById("quantity").value = 1;
+        requestItems.innerHTML = "";
+        addItemRow();
         document.getElementById("requiredFor").value = "";
         document.getElementById("reason").value = "";
       } catch (error) {
@@ -153,7 +181,8 @@
           .join("");
         departmentSelect.value = me.department;
         departmentSelect.addEventListener("change", fillItems);
-        fillItems();
+        document.getElementById("addItemBtn").addEventListener("click", addItemRow);
+        addItemRow();
       } catch (error) {
         showNotice(notice, "error", `Could not load the form: ${error.message}`);
       }

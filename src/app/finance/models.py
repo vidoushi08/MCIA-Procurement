@@ -7,6 +7,7 @@ class PaymentAndDelivery(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     quotation_id = Column(Integer, ForeignKey("supplier_quotations.id"), nullable=False)
+    quotation_line_id = Column(Integer, ForeignKey("supplier_quotation_lines.id"), nullable=True)
     cheque_number = Column(String(50), nullable=False)
     amount_paid = Column(Float, nullable=False)
     payment_date = Column(DateTime, default=datetime.datetime.utcnow)

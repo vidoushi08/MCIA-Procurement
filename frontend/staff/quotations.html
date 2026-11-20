@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCIA Log quotation</title>
+  <title>MCIA Supplier quotations</title>
   <link rel="stylesheet" href="../assets/css/styles.css">
 </head>
 <body>
@@ -12,72 +12,12 @@
       <main class="main">
         <div class="page-head">
           <div>
-            <h1>Log a supplier quotation</h1>
-            <p>Record a quotation received for an open tender. The administrator reviews it and runs the compliance check.</p>
+            <h1>Supplier quotations</h1>
+            <p>After your department head approves a request, collect supplier quotes for the out-of-stock items and send them to Admin.</p>
           </div>
         </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h2>Quotation details</h2>
-              <p>Enter the requisition ID shown on the tender and the supplier's quoted details.</p>
-            </div>
-            <span class="hint">* Required fields</span>
-          </div>
-
-          <form id="quoteForm" novalidate>
-            <div class="card-body">
-              <div class="notice" id="notice"></div>
-
-              <div class="form-row">
-                <div class="field">
-                  <label for="reqId">Requisition ID *</label>
-                  <input class="input" id="reqId" type="number" min="1" required>
-                </div>
-                <div class="field">
-                  <label for="supplierName">Supplier name *</label>
-                  <input class="input" id="supplierName" type="text" required>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="field">
-                  <label for="supplierEmail">Supplier email *</label>
-                  <input class="input" id="supplierEmail" type="email" required>
-                </div>
-                <div class="field">
-                  <label for="supplierPhone">Supplier phone *</label>
-                  <input class="input" id="supplierPhone" type="text" required>
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="itemDesc">Quoted item description *</label>
-                <input class="input" id="itemDesc" type="text" required>
-              </div>
-
-              <div class="form-row">
-                <div class="field">
-                  <label for="totalPrice">Total price (Rs) *</label>
-                  <input class="input" id="totalPrice" type="number" min="0" step="0.01" required>
-                </div>
-                <div class="field">
-                  <label for="deliveryDate">Expected delivery *</label>
-                  <input class="input" id="deliveryDate" type="datetime-local" required>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-foot">
-              <span>Please check the figures against the supplier's quotation.</span>
-              <div style="display:flex;gap:12px">
-                <button class="btn" type="button" id="resetBtn">Clear</button>
-                <button class="btn btn-primary" type="submit">Save quotation</button>
-              </div>
-            </div>
-          </form>
-        </div>
+        <div class="notice" id="notice"></div>
+        <div id="quoteRequests"></div>
       </main>
     </div>
   </div>
@@ -86,44 +26,139 @@
   <script src="staff.js"></script>
   <script>
     const notice = document.getElementById("notice");
-    const form = document.getElementById("quoteForm");
+    const requestContainer = document.getElementById("quoteRequests");
+    let currentStaff;
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      try {
-        await api.post("/tenders/quotations", {
-          requisition_id: Number(document.getElementById("reqId").value),
-          supplier_name: document.getElementById("supplierName").value.trim(),
-          supplier_email: document.getElementById("supplierEmail").value.trim(),
-          supplier_phone: document.getElementById("supplierPhone").value.trim(),
-          quoted_item_description: document.getElementById("itemDesc").value.trim(),
-          total_price: Number(document.getElementById("totalPrice").value),
-          expected_delivery_date: document.getElementById("deliveryDate").value,
+    function renderQuoteRequest(req) {
+      const lines = req.items.filter((item) => item.status === "PENDING_QUOTES");
+      const allQuoted = lines.every((item) => item.quotation_count > 0);
+      const lineFields = lines.map((item) => `
+        <div class="quote-line-entry">
+          <label class="quote-line-choice">
+            <input type="checkbox" class="quote-line-select" value="${item.id}">
+            <span>${escapeHtml(item.item_name || "Unknown item")} × ${item.quantity_requested}</span>
+          </label>
+          <div class="form-row">
+            <div class="field">
+              <label for="desc-${req.id}-${item.id}">Quoted item description *</label>
+              <input class="input quote-line-description" id="desc-${req.id}-${item.id}" data-item-id="${item.id}" value="${escapeHtml(item.item_name || "")}">
+            </div>
+            <div class="field">
+              <label for="price-${req.id}-${item.id}">Total price for this line (Rs) *</label>
+              <input class="input quote-line-price" id="price-${req.id}-${item.id}" data-item-id="${item.id}" type="number" min="0.01" step="0.01">
+            </div>
+          </div>
+          <div class="item-sub">${item.quotation_count} quotation(s) recorded for this item line</div>
+        </div>`).join("");
+
+      return `<section class="card quotation-request" data-request-id="${req.id}">
+        <div class="card-head">
+          <div>
+            <h2>${requestRef(req.id)} · Supplier quotation package</h2>
+            <p>${requestItemsCell(lines)}</p>
+          </div>
+          <span class="pill pending">Waiting for quotations</span>
+        </div>
+        <form class="quote-package-form" data-request-id="${req.id}">
+          <div class="card-body">
+            <div class="form-row">
+              <div class="field"><label>Supplier name *</label><input class="input supplier-name" required></div>
+              <div class="field"><label>Supplier email *</label><input class="input supplier-email" type="email" required></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label>Supplier phone *</label><input class="input supplier-phone" required></div>
+              <div class="field"><label>Expected delivery *</label><input class="input delivery-date" type="datetime-local" required></div>
+            </div>
+            <h3>Items covered by this supplier quote</h3>
+            ${lineFields}
+          </div>
+          <div class="card-foot">
+            <span>Save one or more supplier packages. Add at least one quote for every out-of-stock line before sending the request to Admin.</span>
+            <div class="quote-actions">
+              <button class="btn btn-primary" type="submit">Save supplier quote</button>
+              <button class="btn send-to-admin" type="button" data-request-id="${req.id}" ${allQuoted ? "" : "disabled"}>Send quotes to Admin</button>
+            </div>
+          </div>
+        </form>
+      </section>`;
+    }
+
+    async function loadQuoteRequests() {
+      const requests = await api.get(`/requisitions/staff/${currentStaff.id}/progress`);
+      const pending = requests.filter((req) => req.status === "PENDING_QUOTES");
+      requestContainer.innerHTML = pending.length
+        ? pending.map(renderQuoteRequest).join("")
+        : `<div class="card card-body">No requests are waiting for quotations. Requests appear here after Head approval when one or more items need supplier quotes.</div>`;
+      wireQuoteForms();
+    }
+
+    function wireQuoteForms() {
+      requestContainer.querySelectorAll(".quote-package-form").forEach((form) => {
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          const selected = [...form.querySelectorAll(".quote-line-select:checked")];
+          if (!selected.length) {
+            showNotice(notice, "error", "Select at least one item line covered by this supplier quote.");
+            return;
+          }
+          const lines = selected.map((checkbox) => {
+            const itemId = checkbox.value;
+            const description = form.querySelector(`.quote-line-description[data-item-id="${itemId}"]`).value.trim();
+            const totalPrice = Number(form.querySelector(`.quote-line-price[data-item-id="${itemId}"]`).value);
+            return { requisition_item_id: Number(itemId), quoted_item_description: description, total_price: totalPrice };
+          });
+          if (lines.some((line) => !line.quoted_item_description || !Number.isFinite(line.total_price) || line.total_price <= 0)) {
+            showNotice(notice, "error", "Enter a quoted description and positive price for each selected item.");
+            return;
+          }
+
+          const button = form.querySelector('button[type="submit"]');
+          button.disabled = true;
+          try {
+            await api.post("/tenders/quotations", {
+              requisition_id: Number(form.dataset.requestId),
+              supplier_name: form.querySelector(".supplier-name").value.trim(),
+              supplier_email: form.querySelector(".supplier-email").value.trim(),
+              supplier_phone: form.querySelector(".supplier-phone").value.trim(),
+              expected_delivery_date: form.querySelector(".delivery-date").value,
+              lines,
+            });
+            await loadQuoteRequests();
+            showNotice(notice, "success", "Supplier quotation saved. You can add another supplier quote.");
+          } catch (error) {
+            showNotice(notice, "error", error.message);
+          } finally {
+            button.disabled = false;
+          }
         });
-        form.reset();
-        showNotice(notice, "success", "Quotation saved. The administrator will review it.");
+      });
+
+      requestContainer.querySelectorAll(".send-to-admin").forEach((button) => {
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try {
+            await api.put(`/requisitions/${button.dataset.requestId}/submit-quotes`);
+            await loadQuoteRequests();
+            showNotice(notice, "success", "Quotations sent to Admin for review and comparative table.");
+          } catch (error) {
+            showNotice(notice, "error", error.message);
+            button.disabled = false;
+          }
+        });
+      });
+    }
+
+    (async () => {
+      try {
+        currentStaff = await loadCurrentStaff();
+        if (!currentStaff) return;
+        renderShell("quotes", "Supplier quotations");
+        await loadQuoteRequests();
       } catch (error) {
-        showNotice(notice, "error", error.message);
-      } finally {
-        submitBtn.disabled = false;
+        showNotice(notice, "error", `Could not load quotation requests: ${error.message}`);
       }
-    });
-
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      form.reset();
-      notice.className = "notice";
-    });
-
-    loadCurrentStaff().then((me) => {
-      if (!me) return;
-      renderShell("quotes", "Log quotation");
-    });
+    })();
   </script>
 </body>
 </html>

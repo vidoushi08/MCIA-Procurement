@@ -67,14 +67,15 @@
               <tr>
                 <th>Reference</th>
                 <th>Submitted</th>
-                <th>Item</th>
-                <th>Quantity</th>
+                <th>Requested items</th>
+                <th>Head approval</th>
+                <th>Admin approval</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="rows">
-              <tr><td class="empty-cell" colspan="6">Loading…</td></tr>
+              <tr><td class="empty-cell" colspan="7">Loading…</td></tr>
             </tbody>
           </table>
 
@@ -102,7 +103,8 @@
       const cutoff = days ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
 
       const visible = all.filter((r) => {
-        const haystack = `${requestRef(r.id)} ${r.item ? r.item.item_name : ""}`.toLowerCase();
+        const itemNames = (r.items || []).map((item) => item.item_name || "").join(" ");
+        const haystack = `${requestRef(r.id)} ${itemNames}`.toLowerCase();
         if (query && !haystack.includes(query)) return false;
         if (status && statusGroup(r.status) !== status) return false;
         if (cutoff && new Date(r.created_at).getTime() < cutoff) return false;
@@ -114,12 +116,13 @@
           <tr>
             <td class="ref">${requestRef(r.id)}</td>
             <td>${formatDate(r.created_at)}</td>
-            <td>${itemCell(r.item)}</td>
-            <td>${r.quantity_requested}</td>
+            <td>${requestItemsCell(r.items)}</td>
+            <td>${approvalPill(r.head_approval_status)}</td>
+            <td>${approvalPill(r.admin_approval_status)}</td>
             <td>${statusPill(r.status)}</td>
             <td><button class="btn btn-sm" type="button" data-detail="${r.id}">View details</button></td>
           </tr>`).join("")
-        : `<tr><td class="empty-cell" colspan="6">No requests match these filters.</td></tr>`;
+        : `<tr><td class="empty-cell" colspan="7">No requests match these filters.</td></tr>`;
       document.getElementById("count").textContent = `Showing ${visible.length} of ${all.length} requests`;
     }
 

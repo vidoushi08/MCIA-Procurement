@@ -3,7 +3,8 @@ from datetime import datetime
 from typing import Optional
 
 class PaymentCreate(BaseModel):
-    quotation_id: int
+    quotation_id: Optional[int] = None
+    quotation_line_id: Optional[int] = None
     cheque_number: str
     amount_paid: float
 
@@ -14,6 +15,8 @@ class PaymentResponse(PaymentCreate):
     overdue_alert_sent: bool
     phone_followup_required: bool = False
     is_delivered: bool
+    item_name: Optional[str] = None
+    supplier_name: Optional[str] = None
 
     class Config:
         from_attributes = True

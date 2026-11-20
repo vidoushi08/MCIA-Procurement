@@ -18,9 +18,21 @@ class Requisition(Base):
     admin_signed_at = Column(DateTime, nullable=True)
     declined_at = Column(DateTime, nullable=True)
     decline_reason = Column(String(255), nullable=True)
+    declined_by_role = Column(String(20), nullable=True)
+    comparison_generated_at = Column(DateTime, nullable=True)
 
     status = Column(String(50), default="PENDING_HEAD")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class RequisitionItem(Base):
+    __tablename__ = "requisition_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    requisition_id = Column(Integer, ForeignKey("requisitions.id"), nullable=False, index=True)
+    item_id = Column(Integer, ForeignKey("inventory_items.id"), nullable=False)
+    quantity_requested = Column(Integer, nullable=False)
+    status = Column(String(50), default="PENDING_HEAD", nullable=False)
 
 
 class RequisitionAuditLog(Base):

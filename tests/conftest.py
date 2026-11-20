@@ -10,11 +10,19 @@ from fastapi.testclient import TestClient
 
 from src.app.database import Base, SessionLocal, engine
 from src.app.main import app
+from src.app import notifications
 from src.app.users.models import User
 from src.app.inventory.models import InventoryItem
 from src.app.security import hash_password
 
 PASSWORD = "password123"
+
+
+@pytest.fixture(autouse=True)
+def prevent_real_email(monkeypatch):
+    monkeypatch.setattr(
+        notifications, "send_email", lambda to_address, subject, body: False
+    )
 
 
 @pytest.fixture

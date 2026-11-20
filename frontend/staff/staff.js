@@ -55,7 +55,7 @@ const NAV_ITEMS = [
   { key: "create", label: "Create request", href: "create-request.html", icon: "plus-circle" },
   { key: "history", label: "Request history", href: "request-history.html", icon: "list" },
   { key: "remarks", label: "Remarks", href: "remarks.html", icon: "message" },
-  { key: "quotes", label: "Log quotation", href: "quotations.html", icon: "file" },
+  { key: "quotes", label: "Supplier quotations", href: "quotations.html", icon: "file" },
   { key: "profile", label: "Manage profile", href: "manage-profile.html", icon: "user" },
 ];
 
@@ -125,13 +125,23 @@ async function loadMyRequests(staffId) {
   const mine = requisitions
     .filter((r) => String(r.staff_id) === String(staffId))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .map((r) => ({ ...r, item: itemById.get(r.item_id) }));
+    .map((r) => {
+      const requestItems = r.items?.length
+        ? r.items
+        : [{
+          item_id: r.item_id,
+          quantity_requested: r.quantity_requested,
+          item_name: itemById.get(r.item_id)?.item_name || "",
+        }];
+      return { ...r, items: requestItems, item: itemById.get(r.item_id) };
+    });
   return { mine, items };
 }
 
 const STATUS_MAP = {
-  PENDING_HEAD: { group: "pending", label: "Pending review" },
-  PENDING_ADMIN: { group: "pending", label: "Pending review" },
+  PENDING_HEAD: { group: "pending", label: "Pending head approval" },
+  PENDING_QUOTES: { group: "pending", label: "Collecting quotations" },
+  PENDING_ADMIN: { group: "pending", label: "Pending admin approval" },
   TENDER_OPEN: { group: "approved", label: "Approved" },
   FULFILLED_FROM_STOCK: { group: "fulfilled", label: "Fulfilled" },
   PAID_AWAITING_DELIVERY: { group: "paid", label: "Paid, awaiting delivery" },
@@ -139,12 +149,13 @@ const STATUS_MAP = {
   DECLINED: { group: "declined", label: "Declined" },
 };
 
-const TRACKER_STEPS = ["Submitted", "Head review", "Admin review", "Tender", "Paid", "Completed"];
+const TRACKER_STEPS = ["Submitted", "Head approval", "Get quotes*", "Admin approval", "Tender", "Paid", "Completed"];
 const TRACKER_INDEX = {
   PENDING_HEAD: 1,
-  PENDING_ADMIN: 2,
-  TENDER_OPEN: 3,
-  PAID_AWAITING_DELIVERY: 4,
+  PENDING_QUOTES: 2,
+  PENDING_ADMIN: 3,
+  TENDER_OPEN: 4,
+  PAID_AWAITING_DELIVERY: 5,
   FULFILLED_FROM_STOCK: 6,
   COMPLETED: 6,
 };
@@ -168,6 +179,12 @@ function statusPill(status) {
   return `<span class="pill ${info.group}">${escapeHtml(info.label)}</span>`;
 }
 
+function approvalPill(status) {
+  const label = status || "Pending";
+  const group = label === "Approved" ? "approved" : label === "Declined" ? "declined" : "pending";
+  return `<span class="pill ${group}">${escapeHtml(label)}</span>`;
+}
+
 function requestRef(id) {
   return `REQ-${String(id).padStart(4, "0")}`;
 }
@@ -189,6 +206,13 @@ function itemCell(item) {
   if (!item) return `<span class="item-sub">Unknown item</span>`;
   return `<div class="item-name">${escapeHtml(item.item_name)}</div>
     <div class="item-sub">${escapeHtml(item.department_category)}</div>`;
+}
+
+function requestItemsCell(items) {
+  if (!items?.length) return `<span class="item-sub">No item details</span>`;
+  return items.map((item) => `
+    <div class="item-name">${escapeHtml(item.item_name || "Unknown item")} × ${Number(item.quantity_requested)}</div>
+  `).join("");
 }
 
 function initials(name) {

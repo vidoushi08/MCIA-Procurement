@@ -17,20 +17,20 @@ Sessions last 8 hours. If your session expires, you are sent back to the sign-in
 ## 2. Staff
 
 ### Create a request
-1. Open **Create request** and choose the items and quantities you need.
+1. Open **Create request**, add each item you need, and enter its quantity. Add each item only once per request.
 2. Submit the request. It starts at *Pending head approval*.
 
 ### Track requests
-* **Request history** lists all your requests with their status.
+* **Request history** lists all your requests, requested item lines, overall status, and separate Head and Admin approval columns.
 * The **dashboard** shows the progress tracker for your latest request.
 
-Request stages, in order: pending head approval, pending admin approval, then either fulfilled from stock or tender open. For tendered items: paid, awaiting delivery, then completed. A request can also be declined at the head or admin stage. The reason is shown on the request.
+Request stages: Head approval, quotation collection when any line is short in stock, then Admin approval. At final approval, lines with sufficient stock are issued from inventory and only shortage lines go to tender. Tendered lines proceed through paid/awaiting delivery and completed. A request can be declined by either approver.
 
 ### Remarks
 Use **Remarks** to send a complaint or comment to the administrators. Give a category, a subject and a description of at least 10 characters. You can attach up to 5 PDF, JPG or PNG files, each up to 10 MB. You can see the status of your remarks (pending review, in progress, resolved), open your attachments, and read any admin response.
 
 ### Log a quotation
-When a supplier quotation arrives for an open tender, open **Log quotation**. Enter the requisition ID, the supplier's details, the quoted item, the total price and the expected delivery date. The administrator then reviews it and runs the compliance check.
+After the Department Head approves a request with out-of-stock lines, open **Supplier quotations**. Add a supplier package, select the request lines it covers, and enter the quoted description and total price for each selected line. You may save multiple supplier packages; there is no three-quote minimum, but every line that needs tendering must have at least one quote before you send the package to Admin. The Admin reviews the comparative table and signs the request.
 
 ### Manage profile
 Update your contact details from **Manage profile**.
@@ -45,16 +45,15 @@ Update your contact details from **Manage profile**.
 ## 4. Administrator
 
 ### Requisitions
-Approve or decline requests that have passed head approval. If stock covers the request, it is fulfilled from stock. Otherwise a tender is opened.
+Review the multi-item request after Head approval and, when quotations are needed, review the line-by-line comparative table before signing or declining. At final approval, each line with sufficient stock is issued from inventory; shortage lines open for tender.
 
 ### Tenders
-1. Record each supplier quotation for an open tender.
-2. Run the **AI compliance check** on each quotation. The check uses Gemini, which must be configured (see section 6).
-3. Only a compliant quotation can be approved, and only the lowest compliant quotation can be paid.
+1. Open the comparative table for each open tender and run the **AI compliance check** on its quotation lines. The check uses Gemini when configured (see section 6), otherwise a local fallback is used.
+2. Only a compliant quotation line can be approved, and only the lowest compliant line for that item can be paid.
 
 ### Finance
-1. Approve and pay the chosen quotation. Each requisition is paid once. Each cheque number must be unique.
-2. After the supplier delivers, confirm the delivery. This completes the requisition.
+1. Approve and pay the chosen quotation line. Each tendered item line is paid once, and each cheque number must be unique.
+2. After the supplier delivers, confirm the delivery. The requisition completes after all tendered lines are delivered.
 3. Watch the **SLA alerts**. A reminder is raised within 24 hours of the due date. If an order is overdue, it is flagged for a phone follow-up.
 
 ### Inventory
@@ -71,7 +70,7 @@ View a record of significant actions, such as approvals, payments and deliveries
 
 ## 5. Notifications
 
-Email notifications are sent only when SMTP is configured in `config/.env`. Without SMTP, the system writes the notification to the server log instead, and nothing is emailed.
+When SMTP is configured, the system emails the Department Head when staff submit a request, staff when a Head or Administrator approves or declines, Administrators when staff submit quotations, and suppliers when a payment is recorded. Suppliers also receive delivery reminders within 24 hours of the expected date and an overdue notice after it passes. Without working SMTP settings, messages are logged instead; procurement actions still complete.
 
 ## 6. Setup items that need an administrator
 
@@ -82,7 +81,7 @@ These must be done by the system owner before the system is fully working:
 | MySQL user `mcia_app` | Database | Backend cannot start with MySQL. |
 | `APP_SECRET_KEY` | `config/.env` | Sign-in tokens are invalid after each server restart. |
 | `GEMINI_API_KEY` | `config/.env` | AI compliance checks on quotations do not work. |
-| `SMTP_HOST`, `SMTP_FROM` (and related SMTP settings) | `config/.env` | Email notifications are logged, not sent. |
+| `SMTP_HOST`, `SMTP_FROM` (and related SMTP settings) | `config/.env` | Email notifications are logged, not sent. Configure port 587 and provider credentials when required. |
 | User passwords | `scripts\set_password.py <email>` | Users cannot sign in. |
 
 ## 7. Troubleshooting

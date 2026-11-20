@@ -8,10 +8,10 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
 
 ## Core System Workflow
 
-1. **Department-Categorized Requisition & 3-Tier Signatures:** Staff filter office stationery by department, submit a digital request form, and apply the first signature. Requests route to the **Department Head** (2nd signature) and **Administrator / Head of Procurement** (3rd signature), with a **live progress tracker** visible to staff.
-2. **Automated Stock Check & Deduction:** Upon Administrator signature, the system verifies live MySQL stock levels. If available, quantities are atomically deducted and issued. If out of stock, the request automatically opens for supplier tendering.
-3. **AI-Powered Quotation Matrix:** Staff log vendor quotes (including supplier email and phone contacts). The **Google Gemini AI Engine** flags item discrepancies and generates a **Lowest-Cost Comparative Table**.
-4. **Cheque Issuance & SLA Reminders:** The Administrator approves the lowest-cost compliant bid and records the **issued cheque number**. Automated background reminders alert staff/admins before the due date and dispatch overdue emails/phone flags if deadlines are breached.
+1. **Multi-Item Requisition & Approvals:** Staff submit multiple stationery lines in one request. The **Department Head** reviews it first; staff see separate Head and Administrator approval statuses.
+2. **Staff-Led Quotations:** After Head approval, staff collect supplier quotes for out-of-stock lines and send the quote package to the Administrator. A supplier quote can cover selected lines, with a price recorded for each.
+3. **Stock Check & Comparative Tables:** At Administrator approval, available stock is atomically deducted per line; only shortage lines enter tendering. The Administrator reviews a line-by-line comparative table, with Gemini compliance checks available.
+4. **Cheque Issuance & SLA Reminders:** The Administrator approves the lowest-cost compliant bid for each tendered line and records the **issued cheque number**. Automated reminders alert staff/admins before the due date and flag overdue follow-up.
 
 ---
 
@@ -59,7 +59,7 @@ This platform digitizes low-value office stationery requests, enforces multi-tie
    | `DATABASE_URL` | MySQL connection string (required). |
    | `APP_SECRET_KEY` | Signs login tokens. Set it, or tokens become invalid on every server restart. |
    | `GEMINI_API_KEY` | Enables Gemini quotation checks. A local fallback check runs without it. |
-   | `SMTP_HOST`, `SMTP_FROM` (plus optional `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`) | Sends email notifications. Without them, notifications are logged only. |
+   | `SMTP_HOST`, `SMTP_FROM` (plus optional `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`) | Sends workflow and supplier delivery emails. Without them, notifications are logged only. |
    | `SLA_CHECK_ENABLED`, `SLA_CHECK_INTERVAL_MINUTES` | Background SLA reminder loop (default on, every 60 minutes). |
 
 5. **Create the MySQL database and application user:**

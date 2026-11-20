@@ -10,8 +10,7 @@ async function renderHeadDashboard() {
   const row = (r, withActions) => `<tr>
       <td class="ref">${requestRef(r.id)}</td>
       <td>${escapeHtml(r.staff_name || "")}</td>
-      <td>${escapeHtml(r.item_name || "")}</td>
-      <td>${r.quantity_requested}</td>
+      <td>${requestItemsCell(r.items)}</td>
       <td>${formatDate(r.created_at)}</td>
       <td>${statusPill(r.status)}</td>
       ${withActions ? `<td>
@@ -26,16 +25,18 @@ async function renderHeadDashboard() {
       ${statCard("All department requests", reqs.length, "Newest first", "list")}
     </div>
     <h2 class="section-title">Pending your approval</h2>
-    ${dataTable(["Request ID", "Staff", "Item", "Qty", "Date", "Status", "Action"],
+    ${dataTable(["Request ID", "Staff", "Requested items", "Date", "Status", "Action"],
       pending.map((r) => row(r, true)).join(""), "Nothing waiting for your approval.")}
     <h2 class="section-title">All department requests</h2>
-    ${dataTable(["Request ID", "Staff", "Item", "Qty", "Date", "Status"],
+    ${dataTable(["Request ID", "Staff", "Requested items", "Date", "Status"],
       reqs.map((r) => row(r, false)).join(""), "No requests from your department yet.")}`);
 
   wireActions(headBody(), {
     approve: async (btn) => {
-      await api.put(`/requisitions/${btn.dataset.id}/sign-head`);
-      return "Request approved and sent to admin.";
+      const req = await api.put(`/requisitions/${btn.dataset.id}/sign-head`);
+      return req.status === "PENDING_QUOTES"
+        ? "Request approved. The staff member can now collect quotes for out-of-stock items."
+        : "Request approved and sent to Admin.";
     },
     decline: async (btn) => {
       const reason = window.prompt("Reason for declining (at least 3 characters)");

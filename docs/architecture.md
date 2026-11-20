@@ -15,13 +15,13 @@ frontend/ (static, port 5500)  --HTTP/JSON-->  src/app (FastAPI, port 8000)  -->
 | Module | Responsibility |
 | --- | --- |
 | `main.py` | App wiring, CORS for localhost and 127.0.0.1, router registration, and the SLA loop started in the lifespan hook. |
-| `database.py` | Loads `config/.env`, creates the SQLAlchemy engine, and adds missing columns to existing tables. |
+| `database.py` | Loads `config/.env`, creates the SQLAlchemy engine, adds missing columns, and idempotently backfills legacy one-item requisitions/quotations into line tables. |
 | `security.py` | PBKDF2-SHA256 password hashing, HMAC-signed bearer tokens (8 hour TTL), and the `require_roles` dependency. |
 | `auth/`, `users/` | Login, `/auth/me`, and user management (ADMIN). |
 | `inventory/` | Stationery items and stock levels. |
-| `requisitions/` | Requests and signatures: head sign-off, admin sign-off, decline. List and progress endpoints are scoped to the caller. |
-| `tenders/` | Supplier quotations, open tenders, the AI matrix, and compliance checks (`ai_engine.py`). |
-| `finance/` | Approve-and-pay, deliveries, SLA checks (`scheduler.py`), and the audit log view. |
+| `requisitions/` | Multi-item requests, Head/Admin approvals, quotation handoff, decline, and per-line stock/tender status. List and progress endpoints are scoped to the caller. |
+| `tenders/` | Staff-submitted supplier packages with selected item lines, open tenders, comparative tables, and per-line compliance checks (`ai_engine.py`). |
+| `finance/` | Per-tender-line approve-and-pay, deliveries, SLA checks (`scheduler.py`), and the audit log view. |
 | `remarks/` | Staff remarks, admin responses, and attachments (PDF/JPG/PNG, stored in the database, max 5 per remark, 10 MB each). |
 | `audit.py`, `notifications.py` | Audit trail writes, and SMTP email (logs instead of sending when SMTP is not configured). |
 
@@ -29,15 +29,15 @@ frontend/ (static, port 5500)  --HTTP/JSON-->  src/app (FastAPI, port 8000)  -->
 
 Roles are `STAFF`, `DEPT_HEAD` and `ADMIN`.
 
-1. STAFF create a requisition (`PENDING_HEAD`).
-2. DEPT_HEAD sign off (`PENDING_ADMIN`), or decline.
-3. ADMIN sign off. If stock covers the request it becomes `FULFILLED_FROM_STOCK`. Otherwise it becomes `TENDER_OPEN`. ADMIN can also decline.
-4. For an open tender, quotations are recorded and checked for compliance. Only the lowest compliant quotation can be approved and paid, once per requisition, with a unique cheque number (`PAID_AWAITING_DELIVERY`).
-5. ADMIN marks the delivery complete (`COMPLETED`). The SLA loop sends a pre-delivery reminder within 24 hours of the due date, and flags a phone follow-up when the order is overdue.
+1. STAFF submit a multi-line requisition (`PENDING_HEAD`).
+2. DEPT_HEAD approves or declines. Approved requests with shortage lines move to `PENDING_QUOTES`; requests with sufficient stock move to `PENDING_ADMIN`.
+3. STAFF record one or more supplier packages. Each package can cover selected shortage lines and carries a separate price for each line. Every line requiring tender needs at least one quote before staff can send the package to Admin.
+4. ADMIN reviews the line-by-line comparative table and signs or declines. Stock is rechecked under row locks: fully available lines are deducted; only shortage lines become `TENDER_OPEN`.
+5. For each tendered line, only the lowest compliant quote can be paid, once per line, with a unique cheque number. Delivery completion updates each line and the request; the SLA loop reminds before due dates and flags overdue follow-up.
 
 ## Data and locking
 
-* `create_all` creates new tables but does not add columns. New columns on existing tables must be added to `MISSING_COLUMNS` in `database.py`.
+* `create_all` creates new tables but does not add columns. New columns on existing tables must be added to `MISSING_COLUMNS` in `database.py`. Startup backfills legacy single-item requests and quotations into their new line tables.
 * Stock deduction and payment use `with_for_update()`, which only locks on MySQL. SQLite ignores it, so concurrency protection must be tested against MySQL.
 
 ## Frontend (`frontend/`)

@@ -17,3 +17,16 @@ class SupplierQuotation(Base):
     ai_flag_notes = Column(String(255), nullable=True)
     is_compliant = Column(Boolean, nullable=True)
     is_approved_lowest = Column(Boolean, default=False)
+
+
+class SupplierQuotationLine(Base):
+    __tablename__ = "supplier_quotation_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quotation_id = Column(Integer, ForeignKey("supplier_quotations.id"), nullable=False, index=True)
+    requisition_item_id = Column(Integer, ForeignKey("requisition_items.id"), nullable=False, index=True)
+    quoted_item_description = Column(String(200), nullable=False)
+    total_price = Column(Float, nullable=False)
+    ai_flag_notes = Column(String(255), nullable=True)
+    is_compliant = Column(Boolean, nullable=True)
+    is_approved_lowest = Column(Boolean, default=False)

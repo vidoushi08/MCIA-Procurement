@@ -34,21 +34,29 @@ async function renderRequisitions() {
   const rows = reqs.map((r) => `<tr>
       <td class="ref">${requestRef(r.id)}</td>
       <td>${escapeHtml(r.staff_name || "")}<div class="item-sub">${escapeHtml(r.department || "")}</div></td>
-      <td>${escapeHtml(r.item_name || "")}</td>
-      <td>${r.quantity_requested}</td>
+      <td>${requestItemsCell(r.items)}</td>
+      <td>${approvalPill(r.head_approval_status)}</td>
+      <td>${approvalPill(r.admin_approval_status)}</td>
       <td>${formatDate(r.created_at)}</td>
       <td>${statusPill(r.status)}</td>
       <td>${r.status === "PENDING_ADMIN"
-        ? `<button class="btn btn-sm btn-primary" data-act="sign" data-id="${r.id}">Sign</button>
+        ? `<button class="btn btn-sm" data-compare="${r.id}">Comparative table</button>
+           <button class="btn btn-sm btn-primary" data-act="sign" data-id="${r.id}">Sign</button>
            <button class="btn btn-sm" data-act="decline" data-id="${r.id}">Decline</button>`
         : ""}</td>
-    </tr>`).join("");
-  setBody(body(), pageHead("Requisitions", "Sign off requests at admin stage, or decline them with a reason.") +
-    dataTable(["Request ID", "Staff", "Item", "Qty", "Date", "Status", "Action"], rows, "No requisitions yet."));
+    </tr>
+    ${r.status === "PENDING_ADMIN"
+      ? `<tr><td colspan="8"><div class="quote-comparison" id="comparison-${r.id}"></div></td></tr>`
+      : ""}`).join("");
+  setBody(body(), pageHead("Requisitions", "Generate the comparative table before signing requests with supplier quotations.") +
+    dataTable(["Request ID", "Staff", "Requested items", "Head approval", "Admin approval", "Date", "Status", "Action"],
+      rows, "No requisitions yet."));
   wireActions(body(), {
     sign: async (btn) => {
-      await api.put(`/requisitions/${btn.dataset.id}/sign-admin`);
-      return "Requisition signed off.";
+      const req = await api.put(`/requisitions/${btn.dataset.id}/sign-admin`);
+      return req.status === "PENDING_QUOTES"
+        ? "Stock changed; the request was returned to staff for missing quotations."
+        : "Requisition signed off.";
     },
     decline: async (btn) => {
       const reason = window.prompt("Reason for declining (at least 3 characters)");
@@ -57,43 +65,68 @@ async function renderRequisitions() {
       return "Requisition declined.";
     },
   }, renderRequisitions);
+
+  body().querySelectorAll("[data-compare]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const target = document.getElementById(`comparison-${btn.dataset.compare}`);
+      btn.disabled = true;
+      try {
+        const items = await api.get(`/tenders/requisition/${btn.dataset.compare}/ai-matrix`);
+        target.innerHTML = items.map((item) => `
+          <strong>${escapeHtml(item.item_name)} × ${item.quantity_requested}</strong>
+          <table>
+            <thead><tr><th>Supplier</th><th>Quoted item</th><th>Price</th><th>Compliance</th><th>Comparison</th><th>AI notes</th></tr></thead>
+            <tbody>${item.quotation_lines.length ? item.quotation_lines.map((q) => `<tr>
+              <td>${escapeHtml(q.supplier_name || "")}</td>
+              <td>${escapeHtml(q.quoted_item_description)}</td>
+              <td>${money(q.total_price)}</td>
+              <td>${q.is_compliant === true ? "Compliant" : q.is_compliant === false ? "Not compliant" : "Not checked"}</td>
+              <td>${q.is_lowest_compliant ? "Lowest compliant" : ""}</td>
+              <td>${escapeHtml(q.ai_flag_notes || "")}</td>
+            </tr>`).join("") : `<tr><td colspan="6">No quotations for this line.</td></tr>`}</tbody>
+          </table>`).join("");
+      } catch (error) {
+        flash("error", error.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 async function renderTenders() {
   const tenders = await api.get("/tenders/open");
   const cards = tenders.map((t) => {
-    const quoteRows = t.quotations.map((q) => `<tr>
-        <td>${escapeHtml(q.supplier_name)}<div class="item-sub">${escapeHtml(q.supplier_email)}</div></td>
-        <td>${money(q.total_price)}</td>
-        <td>${formatDate(q.expected_delivery_date)}</td>
-        <td>${q.is_compliant ? `<span class="pill approved">Compliant</span>` : `<span class="pill declined">Not compliant</span>`}</td>
-        <td>${q.is_approved_lowest ? `<span class="pill fulfilled">Lowest</span>` : ""}</td>
-        <td class="item-sub">${escapeHtml(q.ai_flag_notes || "")}</td>
-        <td><button class="btn btn-sm btn-primary" data-act="pay" data-id="${q.id}" data-amount="${q.total_price}">Approve &amp; pay</button></td>
-      </tr>`).join("");
+    const itemTables = t.items.map((item) => {
+      const quoteRows = item.quotation_lines.map((q) => `<tr>
+          <td>${escapeHtml(q.supplier_name || "")}<div class="item-sub">${escapeHtml(q.supplier_email || "")}</div></td>
+          <td>${escapeHtml(q.quoted_item_description)}</td>
+          <td>${money(q.total_price)}</td>
+          <td>${formatDate(q.expected_delivery_date)}</td>
+          <td>${q.is_compliant === true ? `<span class="pill approved">Compliant</span>` : q.is_compliant === false ? `<span class="pill declined">Not compliant</span>` : `<span class="pill pending">Not checked</span>`}</td>
+          <td>${q.is_lowest_compliant ? `<span class="pill fulfilled">Lowest</span>` : ""}</td>
+          <td class="item-sub">${escapeHtml(q.ai_flag_notes || "")}</td>
+          <td>${q.is_compliant && q.is_lowest_compliant
+            ? `<button class="btn btn-sm btn-primary" data-act="pay" data-id="${q.id}" data-amount="${q.total_price}">Approve &amp; pay</button>`
+            : ""}</td>
+        </tr>`).join("");
+      return `<h3>${escapeHtml(item.item_name)} × ${item.quantity_requested}</h3>
+        <table>
+          <thead><tr><th>Supplier</th><th>Quoted item</th><th>Price</th><th>Delivery</th><th>Compliance</th><th>Comparison</th><th>AI notes</th><th>Action</th></tr></thead>
+          <tbody>${quoteRows || `<tr><td class="empty-cell" colspan="8">No quotations for this item line.</td></tr>`}</tbody>
+        </table>`;
+    }).join("");
     return `<div class="card table-card" style="margin-bottom:24px">
       <div class="card-body" style="display:flex;justify-content:space-between;align-items:center">
-        <div><strong>${requestRef(t.requisition_id)}</strong> · ${escapeHtml(t.item_name)} × ${t.quantity_requested}</div>
-        <button class="btn btn-sm" data-act="ai" data-id="${t.requisition_id}">Run AI check</button>
+        <div><strong>${requestRef(t.requisition_id)}</strong> · ${escapeHtml(t.staff_name)}</div>
+        <button class="btn btn-sm" data-act="ai" data-id="${t.requisition_id}">Update comparative table</button>
       </div>
-      <table>
-        <thead><tr><th>Supplier</th><th>Price</th><th>Delivery</th><th>Compliance</th><th>Ranking</th><th>AI notes</th><th>Action</th></tr></thead>
-        <tbody>${quoteRows || `<tr><td class="empty-cell" colspan="7">No quotations yet.</td></tr>`}</tbody>
-      </table>
+      <div class="card-body">${itemTables}</div>
     </div>`;
   }).join("");
 
-  setBody(body(), pageHead("Tenders", "Compare supplier quotations, run the AI check and approve payment.") +
-    (cards || `<div class="card card-body">No open tenders.</div>`) +
-    formCard("Record a supplier quotation", [
-      field("qReq", "Requisition ID", textInput("qReq", { type: "number", required: true, min: 1 })),
-      field("qName", "Supplier name", textInput("qName", { required: true })),
-      field("qEmail", "Supplier email", textInput("qEmail", { type: "email", required: true })),
-      field("qPhone", "Supplier phone", textInput("qPhone", { required: true })),
-      field("qDesc", "Quoted item description", textInput("qDesc", { required: true })),
-      field("qPrice", "Total price (Rs)", textInput("qPrice", { type: "number", required: true, min: 0, step: "0.01" })),
-      field("qDelivery", "Expected delivery", textInput("qDelivery", { type: "datetime-local", required: true })),
-    ].join(""), "Save quotation", "quoteForm"));
+  setBody(body(), pageHead("Tenders", "Compare quotes line-by-line, run compliance checks and pay approved supplier lines.") +
+    (cards || `<div class="card card-body">No open tenders.</div>`));
 
   wireActions(body(), {
     ai: async (btn) => {
@@ -104,7 +137,7 @@ async function renderTenders() {
       const cheque = window.prompt("Cheque number for this payment");
       if (!cheque) throw new Error("Payment cancelled.");
       await api.post("/finance/approve-and-pay", {
-        quotation_id: Number(btn.dataset.id),
+        quotation_line_id: Number(btn.dataset.id),
         cheque_number: cheque.trim(),
         amount_paid: Number(btn.dataset.amount),
       });
@@ -112,25 +145,14 @@ async function renderTenders() {
     },
   }, renderTenders);
 
-  onFormSubmit(document.getElementById("quoteForm"), async (data) => {
-    await api.post("/tenders/quotations", {
-      requisition_id: Number(data.get("qReq")),
-      supplier_name: data.get("qName"),
-      supplier_email: data.get("qEmail"),
-      supplier_phone: data.get("qPhone"),
-      quoted_item_description: data.get("qDesc"),
-      total_price: Number(data.get("qPrice")),
-      expected_delivery_date: data.get("qDelivery"),
-    });
-    return "Quotation saved.";
-  }, renderTenders);
 }
 
 async function renderFinance() {
   const payments = await api.get("/finance/");
   const rows = payments.map((p) => `<tr>
       <td class="ref">PAY-${String(p.id).padStart(4, "0")}</td>
-      <td>Quotation #${p.quotation_id}</td>
+      <td>Quotation #${p.quotation_id}<div class="item-sub">${escapeHtml(p.item_name || "")}</div></td>
+      <td>${escapeHtml(p.supplier_name || "")}</td>
       <td>${escapeHtml(p.cheque_number)}</td>
       <td>${money(p.amount_paid)}</td>
       <td>${formatDate(p.payment_date)}</td>
@@ -143,7 +165,8 @@ async function renderFinance() {
     </tr>`).join("");
   setBody(body(), pageHead("Finance", "Payments, deliveries and SLA follow-ups.",
       `<button class="btn" data-act="sla"><span data-icon="alert"></span>Run SLA checks</button>`) +
-    dataTable(["Payment", "Quotation", "Cheque", "Amount", "Paid on", "Delivery", "Action"], rows, "No payments recorded yet."));
+    dataTable(["Payment", "Quotation / item", "Supplier", "Cheque", "Amount", "Paid on", "Delivery", "Action"],
+      rows, "No payments recorded yet."));
   wireActions(body(), {
     deliver: async (btn) => {
       await api.put(`/finance/deliveries/${btn.dataset.id}/complete`);

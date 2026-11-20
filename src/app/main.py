@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.app.database import engine, Base, add_missing_columns
+from src.app.database import engine, Base, add_missing_columns, backfill_legacy_procurement_lines
 
 from src.app import audit as audit_models
 from src.app.auth import router as auth_router
@@ -18,6 +18,7 @@ from src.app.remarks import models as remark_models, router as remark_router
 
 Base.metadata.create_all(bind=engine)
 add_missing_columns()
+backfill_legacy_procurement_lines()
 
 
 @asynccontextmanager

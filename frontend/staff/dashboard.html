@@ -81,7 +81,7 @@
             <thead>
               <tr>
                 <th>Request ID</th>
-                <th>Item</th>
+                <th>Requested items</th>
                 <th>Date</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -118,7 +118,7 @@
         const rows = mine.slice(0, 5).map((r) => `
           <tr>
             <td class="ref">${requestRef(r.id)}</td>
-            <td>${itemCell(r.item)}</td>
+            <td>${requestItemsCell(r.items)}</td>
             <td>${formatDate(r.created_at)}</td>
             <td>${statusPill(r.status)}</td>
             <td><a class="btn btn-sm" href="request-history.html">View</a></td>
